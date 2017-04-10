@@ -236,15 +236,15 @@ func selectPGA(var config, var PGA)
  //index setting helper functions
 func selectPGAINDEX(var config, var index)
     if (index >= 0 && index <6)
-        selectPGA(config, _PGA[index];
+        return selectPGA(config, _PGA[index];
     else
         return -1;
     endif
 endfunc
 
-func selectDRINDEX(var config, var index)
+func selectSPSINDEX(var config, var index)
     if (index >= 0 && index <8)
-        selectDR(config, _DR[index];
+        return selectSPS(config, _DR[index];
     else
         return -1;
     endif
