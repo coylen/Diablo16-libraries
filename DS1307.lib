@@ -1,22 +1,20 @@
-/*  Simple driver for DS1307 RTC device for DIABLO16 based 4D systems
-    Allows the setting and getting of all the RTC components and
-    also simple synchronisation between the RTC and the System clock
-
-    RTC can be connected to any of the three I2C busses as the Bus number
-    is one of the variables passed to the functions
-*/
+//  Library to support the use of DS1307 Chip based RTC expansion boards
+//  With a DIABLO16 based intelligent display module from 4D Systems
+//  This library is dependant on my i2c function library
+//
+//  Copyright Neil Coyle 2017 Released under the MIT Licence
 
 #constant DS1307_Address        0x68
 
 // Constants for register locations
-#constant REG_DS1307_SECONDS       0
-#constant REG_DS1307_MINUTES       1
-#constant REG_DS1307_HOURS         2
-#constant REG_DS1307_DAY           3
-#constant REG_DS1307_DATE          4
-#constant REG_DS1307_MONTH         5
-#constant REG_DS1307_YEAR          6
-#constant REG_DS1307_CONTROL       7
+#constant REG_DS1307_SECONDS    0
+#constant REG_DS1307_MINUTES    1
+#constant REG_DS1307_HOURS      2
+#constant REG_DS1307_DAY        3
+#constant REG_DS1307_DATE       4
+#constant REG_DS1307_MONTH      5
+#constant REG_DS1307_YEAR       6
+#constant REG_DS1307_CONTROL    7
 #constant REG_DS1307_RAM        8
 
 var DS1307_i2c := 1;
@@ -61,7 +59,6 @@ func RTC_GetMinutes()
 endfunc
 
 func RTC_GetHours()
-
     var ack, hrs, hrs_bcd;
     ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_HOURS, 1, &hrs_bcd);
     if(ack == TRUE)
@@ -244,19 +241,30 @@ func sys_to_RTC()
 
     sys_GetTimeVar(&hr, &min, &sec, &msec);
     RTC_SetTime(hr, min, sec);
-Endfunc
+endfunc
 
 //RAM functions
 func RTC_RAM_writebytes(var offset, var nbytes, var buf)
-
+    var ack;
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
+    return ack;
 endfunc
 
 func RTC_RAM_writewords(var offset, var nwords, var buf)
+    var ack;
+    ack := I2C_writewords_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, &buf);
+    return ack;
 endfunc
 
 func RTC_RAM_readbytes(var offset, var nbytes, var buf)
+    var ack;
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
+    return ack;
 endfunc
 
 func RTC_RAM_readwords(var offset, var nwords, var buf)
+    var ack;
+    ack := I2C_writewords_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, &buf);
+    return ack;
 endfunc
 
