@@ -1,0 +1,229 @@
+#constant _REGISTER_MASK        0x03
+#constant _REGISTER_CONVERT     0x00
+#constant _REGISTER_CONFIG      0x01
+#constant _REGISTER_LOWTHRESH   0x02
+#constant _REGISTER_HITHRESH    0x03
+
+#constant _OS_MASK              0x8000
+#constant _OS_SINGLE            0x8000
+#constant _OS_BUSY              0x0000
+#constant _OS_NOTBUSY           0x8000
+
+#constant _MUX_MASK             0x7000
+#constant _MUX_DIFF_0_1         0x0000
+#constant _MUX_DIFF_0_3         0x1000
+#constant _MUX_DIFF_1_3         0x2000
+#constant _MUX_DIFF_2_3         0x3000
+#constant _MUX_SINGLE_0         0x4000
+#constant _MUX_SINGLE_1         0x5000
+#constant _MUX_SINGLE_2         0x6000
+#constant _MUX_SINGLE_3         0x7000
+
+#constant _PGA_MASK             0x0E00
+#constant _PGA_6_144V           0x0000
+#constant _PGA_4_096V           0x0200
+#constant _PGA_2_048V           0x0400
+#constant _PGA_1_024V           0x0600
+#constant _PGA_0_512V           0x0800
+#constant _PGA_0_256V           0x0A00
+
+#constant _MODE_MASK            0x0100
+#constant _MODE_CONTIN          0x0000
+#constant _MODE_SINGLE          0x0100
+
+#constant _DR_MASK              0x00E0
+
+#constant _DR_8SPS            0x0000
+#constant _DR_160SPS            0x0020
+#constant _DR_320SPS            0x0040
+#constant _DR_64SPS            0x0060
+#constant _DR_128SPS           0x0080
+#constant _DR_250SPS           0x00A0
+#constant _DR_475SPS           0x00C0
+#constant _DR_860SPS            0x00E0
+
+
+#constant _CMODE_MASK           0x0010
+#constant _CMODE_TRAD           0x0000
+#constant _CMODE_WINDOW         0x0010
+
+#constant _CPOL_MASK            0x0008
+#constant _CPOL_ACTVLOW         0x0000
+#constant _CPOL_ACTVHU          0x0008
+
+#constant _CLAT_MASK            0x0004
+#constant _CLAT_NONLAT          0x0000
+#constant _CLAT_LATCH           0x0004
+
+#constant _CQUE_MASK            0x0003
+#constant _CQUE_1CONV           0x0003
+#constant _CQUE_2CONV           0x0001
+#constant _CQUE_4CONV           0x0002
+#constant _CQUE_NONE            0x0003
+
+#include "i2c.lib"
+
+var _DR, _PGA
+var _ADS1115_I2C := 1;
+//https://github.com/thearn/ads1115/blob/master/ads1115/Adafruit_ADS1x15.py
+//Adafruit style functions
+func readADCSingleEnded(var conf)
+    var config, result;
+    config := _CQUE_NONE | _CLAT_NONLAT | _CPOL_ACTVLOW | _CMODE_TRAD | _MODE_SINGLE;
+    config |= conf;
+    var conf_bytes[2];
+    conf_bytes[0] := (config >> 8 & 0xFF);
+    conf_bytes[1] := (config & 0xFF);
+    I2C_writewords_mem(_ADS1115_I2C, 0x48, _REGISTER_CONFIG, 1, config);
+    pause(1000/_SPS +1);
+    I2C_readwords_mem (_ADS1115_I2C, 0x48, _REGISTER_CONVERT, 1, &result)
+    return result;
+endfunc
+
+func readADCDifferential()
+
+endfunc
+
+func startContinuousConversion()
+
+endfunc
+
+func startContinuousDifferentialConversion()
+
+endfunc
+
+func stopContinuousConversion()
+
+endfunc
+
+
+func getLastConversionResults()
+
+endfunc
+
+func startSingleEndedComparator()
+
+endfunc
+
+
+func startDifferentialComparator()
+
+endfunc
+
+//CONFIG FUNCTIONS
+func newconfig()
+    var config;
+    config := _DR_250SPS;
+    config |= _PGA_4_096V;
+    config |= _MUX_SINGLE_0;
+    _DR := 250;
+    _PGA := 4096;
+    return config;
+ endfunc
+
+ func selectSingleChannel(var config, var channel)
+    var conf, mask = 0xFFFF - _MUX_MASK;
+    conf := config & mask;
+    switch (channel)
+        case 0:
+            return conf | _MUX_SINGLE_0;
+        case 1:
+            return conf | _MUX_SINGLE_1;
+        case 2:
+            return conf | _MUX_SINGLE_2;
+        case 3:
+            return conf | _MUX_SINGLE_3;
+        default:
+            return -1;
+    endswitch
+ endfunc
+
+func selectDiffChannel(var config, var ch1, var ch2)
+    var conf, mask = 0xFFFF - _MUX_MASK;
+    conf := config & mask;
+    switch (ch1)
+        case 0:
+            switch (ch2)
+                case 1:
+                    return conf | _MUX_DIFF_0_1;
+                case 3:
+                    return conf | _MUX_DIFF_0_3;
+        endswitch
+        case 1:
+            switch (ch2)
+                case 3:
+                    return conf | _MUX_DIFF_1_3;
+        endswitch
+        case 2:
+            switch (ch2)
+                case 3:
+                    return conf | _MUX_DIFF_2_3;
+        endswitch
+    endswitch
+    return -1
+
+ endfunc
+
+func selectSPS(var config, var SPS)
+    var conf, mask = 0xFFFF - _DR_MASK;
+    conf := config & mask;
+    switch (SPS)
+        case 8:
+            _DR := 8;
+            return conf | _DR_8SPS;
+        case 16:
+            _DR := 16;
+            return conf | _DR_16SPS;
+        case 32:
+            _DR := 32;
+            return conf | _DR_32SPS;
+        case 64:
+            _DR := 64;
+            return conf | _DR_64SPS;
+        case 128:
+            _DR := 128;
+            return conf | _DR_128SPS;
+        case 250:
+            _DR := 250;
+            return conf | _DR_250SPS;
+        case 475:
+            _DR := 475;
+            return conf | _DR_475SPS;
+        case 860:
+            _DR := 860;
+            return conf | _DR_860SPS;
+        default:
+            return -1;
+    endswitch
+ endfunc
+
+func selectPGA(var config, var PGA)
+    var conf, mask = 0xFFFF - _PGA_MASK;
+    conf := config & mask;
+    switch (PGA)
+        case 256:
+            _PGA := 256;
+            return conf | _PGA_0_256V;
+        case 512:
+            _PGA := 512;
+            return conf | _PGA_0_512V;
+        case 1024:
+            _PGA := 1024;
+            return conf | _PGA_1_024V;
+        case 2048:
+            _PGA := 2048;
+            return conf | _PGA_2_048V;
+        case 4096:
+            _PGA := 4096;
+            return conf | _PGA_4_096V;
+        case 6144:
+            _PGA := 6144;
+            return conf | _PGA_6_144V;
+        default:
+            return -1;
+    endswitch
+ endfunc
+
+
+
+

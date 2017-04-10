@@ -1,0 +1,854 @@
+#constant BUFSIZE 8
+#constant FALSE, TRUE
+
+func I2C1_is_ready(var addr)
+    var status;
+    I2C1_Start();
+    status := I2C1_Write(addr<<1);
+    I2C1_Stop();
+    if (status !=1)
+        return FALSE;
+    else
+        return TRUE;
+    endif
+endfunc
+
+func I2C1_scan(var devices)
+    var addr, status;
+    var count := 0;
+    for(addr := 0x08; addr < 0x78;  ++addr)
+        status := I2C1_is_ready(addr);
+        if (status == TRUE)
+            count++;
+            devices[count] := addr;
+        endif
+    next
+    devices[0] := count;
+    return (count);
+endfunc
+
+func I2C1_readbytes(var addr, var nbytes, var buf)
+    var i, ack;
+    I2C1_Start();
+    ack := I2C1_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return FALSE;
+    else
+        for(i := 0; i < nbytes; i++)
+            buf[i] := I2C1_Read();
+            if (i != nbytes -1)
+                I2C1_Ack();
+            endif
+        next
+        I2C1_Nack();
+        I2C1_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C1_writebytes(var addr, var nbytes, var buf)
+    var i, status;
+    I2C1_Start();
+    status := I2C1_Write(addr<<1);
+    if (status !=1)
+        I2C1_Stop();
+        return FALSE;
+    else
+        for(i :=0 ;  i > nbytes; i++)
+            status :=  I2C1_Write(buf[i]);
+            if (status !=1)
+                I2C1_Stop();
+                return FALSE;
+            endif
+        next
+        I2C1_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C1_readbytes_mem(var addr, var memaddr, var nbytes, var buf)
+    var i, ack;
+    I2C1_Start();
+    ack := I2C1_Write(addr<<1);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    ack := I2C1_Write(memaddr);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    I2C1_Restart();
+    ack := I2C1_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nbytes; i++)
+        buf[i] := I2C1_Read();
+        if (i != nbytes -1)
+            I2C1_Ack();
+        endif
+    next
+    I2C1_Nack();
+    I2C1_Stop();
+    return TRUE;
+endfunc
+
+
+func I2C1_writebytes_mem(var addr, var memaddr, var nbytes, var buf)
+    var i, ack;
+    I2C1_Start();
+    ack := I2C1_Write( addr << 1);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    ack := I2C1_Write(memaddr);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nbytes; i++)
+        ack := I2C1_Write(buf[i]);
+        if (ack !=TRUE)
+            I2C1_Stop();
+            return (FALSE);
+        endif
+    next
+    I2C1_Stop();
+    return (TRUE);
+endfunc
+
+func I2C1_readwords(var addr, var nwords, var buf)
+    var i, ack;
+    I2C1_Start();
+    ack := I2C1_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return FALSE;
+    else
+        for(i := 0; i < nwords; i++)
+       buf[i] := I2C1_Read();
+            I2C1_Ack();
+
+            buf[i] := (buf[i] << 8) + I2C1_Read();
+            if (i != nwords -1)
+                I2C1_Ack();
+            endif
+        next
+        I2C1_Nack();
+        I2C1_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C1_writewords(var addr, var nwords, var buf)
+    var i, status;
+    I2C1_Start();
+    status := I2C1_Write(addr << 1);
+    if (status !=1)
+        I2C1_Stop();
+        return FALSE;
+    else
+        for(i :=0 ;  i > nwords; i++)
+            status :=  I2C1_Write(HIbyte(buf[i]));
+            if (status !=1)
+                I2C1_Stop();
+                return FALSE;
+            endif
+            status :=  I2C1_Write(LObyte(buf[i]));
+            if (status !=1)
+                I2C1_Stop();
+                return FALSE;
+            endif
+
+        next
+        I2C1_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C1_readwords_mem(var addr, var memaddr, var nwords, var buf)
+    var i, ack;
+    I2C1_Start();
+    ack := I2C1_Write(addr<<1);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    ack := I2C1_Write(memaddr);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    I2C1_Restart();
+    ack := I2C1_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nwords; i++)
+       buf[i] := I2C1_Read();
+            I2C1_Ack();
+
+            buf[i] := (buf[i] << 8) + I2C1_Read();
+            if (i != nwords -1)
+                I2C1_Ack();
+            endif
+    next
+    I2C1_Nack();
+    I2C1_Stop();
+    return TRUE;
+endfunc
+
+
+func I2C1_writewords_mem(var addr, var memaddr, var nwords, var buf)
+    var i, ack;
+    I2C1_Start();
+    ack := I2C1_Write( addr << 1);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+    ack := I2C1_Write(memaddr);
+    if (ack !=TRUE)
+        I2C1_Stop();
+        return (FALSE);
+    endif
+        for(i :=0 ;  i > nwords; i++)
+            status :=  I2C1_Write(HIbyte(buf[i]));
+            if (status !=1)
+                I2C1_Stop();
+                return FALSE;
+            endif
+            status :=  I2C1_Write(LObyte(buf[i]));
+            if (status !=1)
+                I2C1_Stop();
+                return FALSE;
+            endif
+
+        next
+    I2C1_Stop();
+    return (TRUE);
+endfunc
+
+
+func I2C2_is_ready(var addr)
+    var status;
+    I2C2_Start();
+    status := I2C2_Write(addr<<1);
+    I2C2_Stop();
+    if (status !=1)
+        return FALSE;
+    else
+        return TRUE;
+    endif
+endfunc
+
+func I2C2_scan(var devices)
+    var addr, status;
+    var count := 0;
+    for (addr := 0x08; addr < 0x78;  ++addr)
+        status := I2C2_is_ready(addr);
+        if (status == TRUE)
+            count++;
+            devices[count] := addr;
+        endif
+    next
+    devices[0] := count;
+    return (devices);
+endfunc
+
+func I2C2_readfrom_into(var addr, var nbytes, var buf)
+    var i, ack;
+    I2C2_Start();
+    ack := I2C2_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return FALSE;
+    else
+        for(i := 0; i < nbytes; i++)
+            buf[i] := I2C2_Read();
+            if (i != nbytes -1)
+                I2C2_Ack();
+            endif
+        next
+        I2C2_Nack();
+        I2C2_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C2_writeto(var addr, var nbytes, var buf)
+    var i, status;
+    I2C2_Start();
+    status := I2C2_Write(addr<<1);
+    if (status !=1)
+        I2C2_Stop();
+        return FALSE;
+    else
+        for(i :=0 ;  i > nbytes; i++)
+            status :=  I2C2_Write(buf[i]);
+            if (status !=1)
+                I2C2_Stop();
+                return FALSE;
+            endif
+        next
+        I2C2_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C2_readfrom_mem_into(var addr, var memaddr, var nbytes, var buf)
+    var i, ack;
+    I2C2_Start();
+    ack := I2C2_Write(addr<<1);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    ack := I2C2_Write(memaddr);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    I2C2_Restart();
+    ack := I2C2_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nbytes; i++)
+        buf[i] := I2C2_Read();
+        if (i != nbytes -1)
+            I2C2_Ack();
+        endif
+    next
+    I2C2_Nack();
+    I2C2_Stop();
+    return TRUE;
+endfunc
+
+
+func I2C2_writeto_mem(var addr, var memaddr, var nbytes, var buf)
+    var i, ack;
+    I2C2_Start();
+    ack := I2C2_Write( addr << 1);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    ack := I2C2_Write(memaddr);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nbytes; i++)
+        ack := I2C2_Write(buf[i]);
+        if (ack !=TRUE)
+            I2C2_Stop();
+            return (FALSE);
+        endif
+    next
+    I2C2_Stop();
+    return (TRUE);
+endfunc
+
+func I2C2_readwords(var addr, var nwords, var buf)
+    var i, ack;
+    I2C2_Start();
+    ack := I2C2_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return FALSE;
+    else
+        for(i := 0; i < nwords; i++)
+       buf[i] := I2C2_Read();
+            I2C2_Ack();
+
+            buf[i] := (buf[i] << 8) + I2C2_Read();
+            if (i != nwords -1)
+                I2C2_Ack();
+            endif
+        next
+        I2C2_Nack();
+        I2C2_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C2_writewords(var addr, var nwords, var buf)
+    var i, status;
+    I2C2_Start();
+    status := I2C2_Write(addr << 1);
+    if (status !=1)
+        I2C2_Stop();
+        return FALSE;
+    else
+        for(i :=0 ;  i > nwords; i++)
+            status :=  I2C2_Write(HIbyte(buf[i]));
+            if (status !=1)
+                I2C2_Stop();
+                return FALSE;
+            endif
+            status :=  I2C2_Write(LObyte(buf[i]));
+            if (status !=1)
+                I2C2_Stop();
+                return FALSE;
+            endif
+
+        next
+        I2C2_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C2_readwords_mem(var addr, var memaddr, var nwords, var buf)
+    var i, ack;
+    I2C2_Start();
+    ack := I2C2_Write(addr<<1);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    ack := I2C2_Write(memaddr);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    I2C2_Restart();
+    ack := I2C2_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nwords; i++)
+       buf[i] := I2C2_Read();
+            I2C2_Ack();
+
+            buf[i] := (buf[i] << 8) + I2C2_Read();
+            if (i != nwords -1)
+                I2C2_Ack();
+            endif
+    next
+    I2C2_Nack();
+    I2C2_Stop();
+    return TRUE;
+endfunc
+
+
+func I2C2_writewords_mem(var addr, var memaddr, var nwords, var buf)
+    var i, ack;
+    I2C2_Start();
+    ack := I2C2_Write( addr << 1);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+    ack := I2C2_Write(memaddr);
+    if (ack !=TRUE)
+        I2C2_Stop();
+        return (FALSE);
+    endif
+        for(i :=0 ;  i > nwords; i++)
+            status :=  I2C2_Write(HIbyte(buf[i]));
+            if (status !=1)
+                I2C2_Stop();
+                return FALSE;
+            endif
+            status :=  I2C2_Write(LObyte(buf[i]));
+            if (status !=1)
+                I2C2_Stop();
+                return FALSE;
+            endif
+
+        next
+    I2C2_Stop();
+    return (TRUE);
+endfunc
+
+
+func I2C3_is_ready(var addr)
+    var status;
+    I2C3_Start();
+    status := I2C3_Write(addr<<1);
+    I2C3_Stop();
+    if (status !=1 )
+        return FALSE;
+    else:
+        return TRUE;
+    endif
+endfunc
+
+func I2C3_scan(var devices)
+    var addr, status;
+    var count := 0;
+    for (addr := 0x08; addr < 0x78;  ++addr)
+        status := I2C3_is_ready(addr);
+        if (status == TRUE)
+            count++;
+            devices[count] := addr;
+        endif
+    next
+    devices[0] := count;
+    return (devices);
+endfunc
+
+func I2C3_readfrom_into(var addr, var nbytes, var buf)
+    var i, ack;
+    I2C3_Start();
+    ack := I2C3_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return FALSE;
+    else
+        for(i := 0; i < nbytes; i++)
+            buf[i] := I2C3_Read();
+            if (i != nbytes -1)
+                I2C3_Ack();
+            endif
+        next
+        I2C3_Nack();
+        I2C3_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C3_writeto(var addr, var nbytes, var buf)
+    var i, status;
+    I2C3_Start();
+    status := I2C3_Write(addr<<1);
+    if (status !=1)
+        I2C3_Stop();
+        return FALSE;
+    else
+        for(i := 0 ;  i > nbytes; i++)
+            status :=  I2C3_Write(buf[i]);
+            if (status !=1)
+                I2C3_Stop();
+                return FALSE;
+            endif
+        next
+        I2C3_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C3_readfrom_mem_into(var addr, var memaddr, var nbytes, var buf)
+    var i, ack;
+    I2C3_Start();
+    ack := I2C3_Write(addr<<1);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    ack := I2C3_Write(memaddr);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    I2C3_Restart();
+    ack := I2C3_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nbytes; i++)
+        buf[i] := I2C3_Read();
+        if (i != nbytes -1)
+            I2C3_Ack();
+        endif
+    next
+    I2C3_Nack();
+    I2C3_Stop();
+    return TRUE;
+endfunc
+
+
+func I2C3_writeto_mem(var addr, var memaddr, var nbytes, var buf)
+    var i, ack;
+    I2C3_Start();
+    ack := I2C3_Write( addr << 1);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    ack := I2C3_Write(memaddr);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nbytes; i++)
+        ack := I2C3_Write(buf[i]);
+        if (ack !=TRUE)
+            I2C3_Stop();
+            return (FALSE);
+        endif
+    next
+    I2C3_Stop();
+    return (TRUE);
+endfunc
+func I2C3_readwords(var addr, var nwords, var buf)
+    var i, ack;
+    I2C3_Start();
+    ack := I2C3_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return FALSE;
+    else
+        for(i := 0; i < nwords; i++)
+       buf[i] := I2C3_Read();
+            I2C3_Ack();
+
+            buf[i] := (buf[i] << 8) + I2C3_Read();
+            if (i != nwords -1)
+                I2C3_Ack();
+            endif
+        next
+        I2C3_Nack();
+        I2C3_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C3_writewords(var addr, var nwords, var buf)
+    var i, status;
+    I2C3_Start();
+    status := I2C3_Write(addr << 1);
+    if (status !=1)
+        I2C3_Stop();
+        return FALSE;
+    else
+        for(i :=0 ;  i > nwords; i++)
+            status :=  I2C3_Write(HIbyte(buf[i]));
+            if (status !=1)
+                I2C3_Stop();
+                return FALSE;
+            endif
+            status :=  I2C3_Write(LObyte(buf[i]));
+            if (status !=1)
+                I2C3_Stop();
+                return FALSE;
+            endif
+
+        next
+        I2C3_Stop();
+        return TRUE;
+    endif
+endfunc
+
+func I2C3_readwords_mem(var addr, var memaddr, var nwords, var buf)
+    var i, ack;
+    I2C3_Start();
+    ack := I2C3_Write(addr<<1);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    ack := I2C3_Write(memaddr);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    I2C3_Restart();
+    ack := I2C3_Write(addr<<1 | 1);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    for(i := 0; i < nwords; i++)
+       buf[i] := I2C3_Read();
+            I2C3_Ack();
+
+            buf[i] := (buf[i] << 8) + I2C3_Read();
+            if (i != nwords -1)
+                I2C3_Ack();
+            endif
+    next
+    I2C3_Nack();
+    I2C3_Stop();
+    return TRUE;
+endfunc
+
+
+func I2C3_writewords_mem(var addr, var memaddr, var nwords, var buf)
+    var i, ack;
+    I2C3_Start();
+    ack := I2C3_Write( addr << 1);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+    ack := I2C3_Write(memaddr);
+    if (ack !=TRUE)
+        I2C3_Stop();
+        return (FALSE);
+    endif
+        for(i :=0 ;  i > nwords; i++)
+            status :=  I2C3_Write(HIbyte(buf[i]));
+            if (status !=1)
+                I2C3_Stop();
+                return FALSE;
+            endif
+            status :=  I2C3_Write(LObyte(buf[i]));
+            if (status !=1)
+                I2C3_Stop();
+                return FALSE;
+            endif
+
+        next
+    I2C3_Stop();
+    return (TRUE);
+endfunc
+
+
+//HELPER FUNCTIONS TO ALLOW I2C BUS NO AS A PARAMETER
+func I2C_is_ready(var i2c, var addr)
+    switch (i2c)
+        case 1:
+            return I2C1_is_ready(addr);
+            break;
+        case 2:
+            return I2C1_is_ready(addr);
+            break;
+        case 3:
+            return I2C1_is_ready(addr);
+            break;
+    endswitch
+endfunc
+
+func I2C_scan(var i2c, var devices)
+     switch (i2c)
+        case 1:
+            return I2C1_scan(devices);
+            break;
+        case 2:
+            return I2C2_scan(devices);
+            break;
+        case 3:
+            return I2C3_scan(devices);
+            break;
+    endswitch
+endfunc
+
+func I2C_readbytes(var i2c, var addr, var nbytes, var buf)
+     switch (i2c)
+        case 1:
+            return I2C1_readbytes(addr, nbytes, buf);
+            break;
+        case 2:
+            return I2C2_readbytes(addr, nbytes, buf);
+            break;
+        case 3:
+            return I2C3_readbytes(addr, nbytes, buf);
+            break;
+    endswitch
+endfunc
+
+func I2C_writebytes(var i2c, var addr, var nbytes, var buf)
+     switch (i2c)
+        case 1:
+            return I2C1_writebytes(addr, nbytes, buf);
+            break;
+        case 2:
+            return I2C2_writebytes(addr, nbytes, buf);
+            break;
+        case 3:
+            return I2C3_writebytes(addr, nbytes, buf);
+            break;
+    endswitch
+endfunc
+
+func I2C_readbytes_mem(var i2c, var addr, var memaddr, var nbytes, var buf)
+     switch (i2c)
+        case 1:
+            return I2C1_readbytes_mem(addr, memaddr, nbytes, buf);
+            break;
+        case 2:
+            return I2C2_readbytes_mem (addr, memaddr, nbytes, buf);
+            break;
+        case 3:
+            return I2C3_readfrom_mem_into(addr, memaddr, nbytes, buf);
+            break;
+    endswitch
+    return 0;
+endfunc
+
+
+func I2C_writebytes_mem(var i2c, var addr, var memaddr, var nbytes, var buf)
+     switch (i2c)
+        case 1:
+            return I2C1_writebytes_mem(addr, memaddr, nbytes, buf);
+            break;
+        case 2:
+            return I2C2_writebytes_mem(addr, memaddr, nbytes, buf);
+            break;
+        case 3:
+            return I2C3_writebytes_mem(addr, memaddr, nbytes, buf);
+            break;
+    endswitch
+    return 0;
+endfunc
+
+func I2C_readwords(var i2c, var addr, var nwords, var buf)
+     switch (i2c)
+        case 1:
+            return I2C1_readwords(addr, nwords, buf);
+            break;
+        case 2:
+            return I2C2_readwords(addr, nwords, buf);
+            break;
+        case 3:
+            return I2C3_readwords(addr, nwords, buf);
+            break;
+    endswitch
+endfunc
+
+func I2C_writewords(var i2c, var addr, var nwords, var buf)
+     switch (i2c)
+        case 1:
+            return I2C1_writewords(addr, nwords, buf);
+            break;
+        case 2:
+            return I2C2_writewords(addr, nwords, buf);
+            break;
+        case 3:
+            return I2C3_writewords(addr, nwords, buf);
+            break;
+    endswitch
+endfunc
+
+func I2C_readwords_mem(var i2c, var addr, var memaddr, var nwords, var buf)
+     switch (i2c)
+        case 1:
+            return I2C1_readwords_mem(addr, memaddr, nwords, buf);
+            break;
+        case 2:
+            return I2C2_readwords_mem (addr, memaddr, nwords, buf);
+            break;
+        case 3:
+            return I2C3_readfrom_mem_into(addr, memaddr, nwords, buf);
+            break;
+    endswitch
+    return 0;
+endfunc
+
+
+func I2C_writewords_mem(var i2c, var addr, var memaddr, var nwords, var buf)
+     switch (i2c)
+        case 1:
+            return I2C1_writewords_mem(addr, memaddr, nwords, buf);
+            break;
+        case 2:
+            return I2C2_writewords_mem(addr, memaddr, nwords, buf);
+            break;
+        case 3:
+            return I2C3_writewords_mem(addr, memaddr, nwords, buf);
+            break;
+    endswitch
+    return 0;
+endfunc
+

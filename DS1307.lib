@@ -1,0 +1,262 @@
+/*  Simple driver for DS1307 RTC device for DIABLO16 based 4D systems
+    Allows the setting and getting of all the RTC components and
+    also simple synchronisation between the RTC and the System clock
+
+    RTC can be connected to any of the three I2C busses as the Bus number
+    is one of the variables passed to the functions
+*/
+
+#constant DS1307_Address        0x68
+
+// Constants for register locations
+#constant REG_DS1307_SECONDS       0
+#constant REG_DS1307_MINUTES       1
+#constant REG_DS1307_HOURS         2
+#constant REG_DS1307_DAY           3
+#constant REG_DS1307_DATE          4
+#constant REG_DS1307_MONTH         5
+#constant REG_DS1307_YEAR          6
+#constant REG_DS1307_CONTROL       7
+#constant REG_DS1307_RAM        8
+
+var DS1307_i2c := 1;
+#inherit "i2c.lib"
+
+// Helper functions to translate binary coded decimals into standard integers
+func bcd_to_int(var bcd)
+    var out;
+    out := bcd & 0x0F;
+    out += (((bcd >> 4) & 0x0F) * 10);
+    return out;
+endfunc
+
+func int_to_bcd(var intvalue)
+    var out;
+    out := intvalue / 10;
+    out := (out << 4) + (intvalue % 10);
+    return out;
+endfunc
+
+//FUNCTIONS TO GET INDIVIDUAL COMPONENTS
+func RTC_GetSeconds()
+    var ack, secs, secs_bcd;
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_SECONDS, 1, &secs_bcd);
+    if(ack == TRUE)
+        secs := bcd_to_int(secs_bcd & 0x7F);
+        return secs;
+    else
+        return -1;
+    endif
+endfunc
+
+func RTC_GetMinutes()
+    var ack, mins, mins_bcd;
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_MINUTES, 1, &mins_bcd);
+    if(ack == TRUE)
+        mins := bcd_to_int(mins_bcd & 0x7F);
+        return mins;
+    else
+        return -1;
+    endif
+endfunc
+
+func RTC_GetHours()
+
+    var ack, hrs, hrs_bcd;
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_HOURS, 1, &hrs_bcd);
+    if(ack == TRUE)
+        //check format
+        if ((hrs_bcd >> 6) & 0x01 == 0x01)
+            //bit 6 set so 12hour format
+            hrs := bcd_to_int(hrs_bcd & 0x1F);
+            if ((hrs_bcd >> 5) & 0x01 == 0x01)
+                //PM bit set
+                return hrs + 12;
+            else
+                return hrs;
+            endif
+        else
+            //24 hour format
+            hrs := bcd_to_int(hrs_bcd & 0x3F);
+        endif
+        return hrs;
+    else
+        return -1;
+    endif
+endfunc
+
+func RTC_GetDay()
+    var ack, day, day_bcd;
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DAY, 1, &day_bcd);
+    if(ack == TRUE)
+        day := bcd_to_int(day_bcd & 0x07);
+        return day;
+    else
+        return -1;
+    endif
+endfunc
+
+func RTC_GetDate()
+    var ack, date, date_bcd;
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DATE, 1, &date_bcd);
+    if(ack == TRUE)
+        date := bcd_to_int(date_bcd & 0x3F);
+        return date;
+    else
+        return -1;
+    endif
+endfunc
+
+func RTC_GetMonth()
+    var ack, month, month_bcd;
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_MONTH, 1, &month_bcd);
+    if(ack == TRUE)
+        month := bcd_to_int(month_bcd & 0x1F);
+        return month;
+    else
+        return -1;
+    endif
+endfunc
+
+func RTC_GetYear()
+    var ack, year, year_bcd;
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_YEAR, 1, &year_bcd);
+    if(ack == TRUE)
+        year := bcd_to_int(year_bcd & 0xFF);
+        return year;
+    else
+        return -1;
+    endif
+endfunc
+
+//FUNCTIONS TO SET INDIVIDUAL COMPONENTS
+func RTC_SetSeconds(var seconds)
+    var ack, secs_bcd;
+    //encode seconds
+    secs_bcd := int_to_bcd(seconds);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_SECONDS, 1, &secs_bcd);
+    return ack;
+endfunc
+
+func RTC_SetMinutes(var minutes)
+    var ack, mins_bcd;
+    //encode minutes
+    mins_bcd := int_to_bcd(minutes);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_MINUTES, 1, &mins_bcd);
+    return ack;
+endfunc
+
+func RTC_SetHours(var hours)
+    var ack, hrs_bcd;
+    //encode hours
+    hrs_bcd := int_to_bcd(hours);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_HOURS, 1, &hrs_bcd);
+    return ack;
+endfunc
+
+func RTC_SetDay(var day)
+    var ack, day_bcd;
+    //encode hours
+    day_bcd := int_to_bcd(day);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DAY, 1, &day_bcd);
+    return ack;
+endfunc
+
+func RTC_SetDate(var date)
+    var ack, date_bcd;
+    //encode hours
+    date_bcd := int_to_bcd(date);
+    ack := I2C_writetbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DATE, 1, &date_bcd);
+    return ack;
+endfunc
+
+func RTC_SetMonth(var month)
+    var ack, month_bcd;
+    //encode hours
+    month_bcd := int_to_bcd(month);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_MONTH, 1, &month_bcd);
+    return ack;
+endfunc
+
+func RTC_SetYear(var year)
+    var ack, year_bcd;
+    //encode hours
+    year_bcd := int_to_bcd(year);
+    print(year_bcd) ;
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_YEAR, 1, &year_bcd);
+    return ack;
+endfunc
+
+// FUNCTION TO GET TIME OFF I2C_RTC
+func RTC_GetTimeVar(var hour, var minute, var second)
+    *hour := RTC_GetHours();
+    *minute := RTC_GetMinutes();
+    *second := RTC_GetSeconds();
+endfunc
+
+// FUNCTION TO GET DATE OFF I2C_RTC
+func RTC_GetDateVar(var year, var month, var day)
+    *year := RTC_GetYear();
+    *month := RTC_GetMonth();
+    *day := RTC_GetDate();
+endfunc
+
+//FUNCTIONS TO SET DATE AND TIME
+func RTC_SetTime(var hour, var minute, var second)
+    var ack;
+    ack := RTC_SetHours(hour);
+    ack += RTC_SetMinutes(minute);
+    ack += RTC_SetSeconds(second);
+
+    if (ack == 3)
+        return TRUE;
+    else
+        return FALSE;
+    endif
+endfunc
+
+func RTC_SetAllDate(var year, var month, var day)
+    var ack;
+    ack := RTC_SetYear(year);
+    ack += RTC_SetMonth(month);
+    ack += RTC_SetDate(day);
+    if (ack == 3)
+        return TRUE;
+    else
+        return FALSE;
+    endif
+endfunc
+
+//FUNCTIONS TO SYNCRONISE RTC WITH SYSTEM CLOCK
+func RTC_to_sys()
+    var msec, sec, min, hr, day, month, year;
+    RTC_GetDateVar(&year, &month, &day);
+    sys_SetDate(year, month, day);
+
+    RTC_GetTimeVar(&hr, &min, &sec);
+    sys_SetTime(hr, min, sec);
+endfunc
+
+func sys_to_RTC()
+    var msec, sec, min, hr, day, month, year;
+    sys_GetDateVar(&year, &month, &day);
+    RTC_SetDate(year, month, day);
+
+    sys_GetTimeVar(&hr, &min, &sec, &msec);
+    RTC_SetTime(hr, min, sec);
+Endfunc
+
+//RAM functions
+func RTC_RAM_writebytes(var offset, var nbytes, var buf)
+
+endfunc
+
+func RTC_RAM_writewords(var offset, var nwords, var buf)
+endfunc
+
+func RTC_RAM_readbytes(var offset, var nbytes, var buf)
+endfunc
+
+func RTC_RAM_readwords(var offset, var nwords, var buf)
+endfunc
+
