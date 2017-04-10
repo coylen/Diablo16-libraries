@@ -1,0 +1,57 @@
+//  Library to support the use of AT24C32 EEPROM expansion boards
+//  With a DIABLO16 based intelligent display module from 4D Systems
+//  This library is dependant on my i2c function library
+//
+//  Copyright Neil Coyle 2017 Released under the MIT Licence
+
+#inherit "i2c.lib"
+
+#constant AT24C32_Address        0x50
+var AT24C32_i2c := 1;
+
+//EEPROM functions
+func EEPROM_writebytes(var offset, var nbytes, var buf)
+    if !checkOffset(offset)
+        return -1;
+    endif
+    var ack;
+    ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, &buf);
+    return ack;
+endfunc
+
+func RTC_RAM_writewords(var offset, var nwords, var buf)
+    if !checkOffset(offset)
+        return -1;
+    endif
+    var ack;
+    ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset, nwords, &buf);
+    return ack;
+endfunc
+
+func RTC_RAM_readbytes(var offset, var nbytes, var buf)
+    if !checkOffset(offset)
+        return -1;
+    endif
+    var ack;
+    ack := I2C_readbytes_mem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, &buf);
+    return ack;
+endfunc
+
+func RTC_RAM_readwords(var offset, var nwords, var buf)
+    if !checkOffset(offset)
+        return -1;
+    endif
+    var ack;
+    ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset, nwords, &buf);
+    return ack;
+endfunc
+
+func checkOffset(var offset)
+    if (offset >= 0 && offset <=0xFFF)
+        return TRUE;
+    else
+        return FALSE;
+    endif
+endfunc
+
+
