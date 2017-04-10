@@ -1,4 +1,8 @@
-#constant BUFSIZE 8
+//  Library to provide an i2c library of functions for use
+//  with a DIABLO16 based intelligent display module from 4D Systems
+//
+//  Copyright Neil Coyle 2017 Released under the MIT Licence
+
 #constant FALSE, TRUE
 
 func I2C1_is_ready(var addr)
