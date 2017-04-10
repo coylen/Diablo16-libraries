@@ -42,8 +42,8 @@
 #constant _DR_MASK              0x00E0
 
 #constant _DR_8SPS              0x0000
-#constant _DR_160SPS            0x0020
-#constant _DR_320SPS            0x0040
+#constant _DR_16SPS             0x0020
+#constant _DR_32SPS             0x0040
 #constant _DR_64SPS             0x0060
 #constant _DR_128SPS            0x0080
 #constant _DR_250SPS            0x00A0
@@ -71,7 +71,9 @@
 
 #include "i2c.lib"
 
-var _DR, _PGA
+var _DR[8] := [8, 16, 32, 64, 128, 250, 475, 860]
+var _PGA[6] := [6144, 4096, 2048, 1024, 512, 256]
+var _DR_INDEX, _PGA_INDEX
 var _ADS1115_I2C := 1;
 
 func readADC(var conf, var result)
@@ -124,8 +126,8 @@ func newconfig()
     config := _DR_250SPS;
     config |= _PGA_4_096V;
     config |= _MUX_SINGLE_0;
-    _DR := 250;
-    _PGA := 4096;
+    _DR_INDEX := 5;
+    _PGA_INDEX := 1;
     return config;
  endfunc
 
@@ -176,28 +178,28 @@ func selectSPS(var config, var SPS)
     conf := config & mask;
     switch (SPS)
         case 8:
-            _DR := 8;
+            _DR_INDEX := 0;
             return conf | _DR_8SPS;
         case 16:
-            _DR := 16;
+            _DR_INDEX := 1;
             return conf | _DR_16SPS;
         case 32:
-            _DR := 32;
+            _DR_INDEX := 2;
             return conf | _DR_32SPS;
         case 64:
-            _DR := 64;
+            _DR_INDEX := 3;
             return conf | _DR_64SPS;
         case 128:
-            _DR := 128;
+            _DR_INDEX := 4;
             return conf | _DR_128SPS;
         case 250:
-            _DR := 250;
+            _DR_INDEX := 5;
             return conf | _DR_250SPS;
         case 475:
-            _DR := 475;
+            _DR_INDEX := 6;
             return conf | _DR_475SPS;
         case 860:
-            _DR := 860;
+            _DR_INDEX := 7;
             return conf | _DR_860SPS;
         default:
             return -1;
@@ -209,28 +211,43 @@ func selectPGA(var config, var PGA)
     conf := config & mask;
     switch (PGA)
         case 256:
-            _PGA := 256;
+            _PGA_INDEX := 5;
             return conf | _PGA_0_256V;
         case 512:
-            _PGA := 512;
+            _PGA_INDEX := 4;
             return conf | _PGA_0_512V;
         case 1024:
-            _PGA := 1024;
+            _PGA_INDEX := 6;
             return conf | _PGA_1_024V;
         case 2048:
-            _PGA := 2048;
+            _PGA_INDEX := 2;
             return conf | _PGA_2_048V;
         case 4096:
-            _PGA := 4096;
+            _PGA_INDEX := 1;
             return conf | _PGA_4_096V;
         case 6144:
-            _PGA := 6144;
+            _PGA_INDEX := 0;
             return conf | _PGA_6_144V;
         default:
             return -1;
     endswitch
  endfunc
 
+ //index setting helper functions
+func selectPGAINDEX(var config, var index)
+    if (index >= 0 && index <6)
+        selectPGA(config, _PGA[index];
+    else
+        return -1;
+    endif
+endfunc
 
+func selectDRINDEX(var config, var index)
+    if (index >= 0 && index <8)
+        selectDR(config, _DR[index];
+    else
+        return -1;
+    endif
+endfunc
 
 
