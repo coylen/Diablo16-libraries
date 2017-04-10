@@ -1,3 +1,10 @@
+//  Library to support the use of ADS1115 Chip based expansion boards
+//  With a DIABLO16 based intelligent display module from 4D Systems
+//  This library is dependant on my i2c function library
+//
+//  Copyright Neil Coyle 2017 Released under the MIT Licence
+
+
 #constant _REGISTER_MASK        0x03
 #constant _REGISTER_CONVERT     0x00
 #constant _REGISTER_CONFIG      0x01
@@ -33,13 +40,13 @@
 
 #constant _DR_MASK              0x00E0
 
-#constant _DR_8SPS            0x0000
+#constant _DR_8SPS              0x0000
 #constant _DR_160SPS            0x0020
 #constant _DR_320SPS            0x0040
-#constant _DR_64SPS            0x0060
-#constant _DR_128SPS           0x0080
-#constant _DR_250SPS           0x00A0
-#constant _DR_475SPS           0x00C0
+#constant _DR_64SPS             0x0060
+#constant _DR_128SPS            0x0080
+#constant _DR_250SPS            0x00A0
+#constant _DR_475SPS            0x00C0
 #constant _DR_860SPS            0x00E0
 
 
@@ -65,9 +72,8 @@
 
 var _DR, _PGA
 var _ADS1115_I2C := 1;
-//https://github.com/thearn/ads1115/blob/master/ads1115/Adafruit_ADS1x15.py
-//Adafruit style functions
-func readADCSingleEnded(var conf)
+
+func readADC(var conf)
     var config, result;
     config := _CQUE_NONE | _CLAT_NONLAT | _CPOL_ACTVLOW | _CMODE_TRAD | _MODE_SINGLE;
     config |= conf;
@@ -76,19 +82,11 @@ func readADCSingleEnded(var conf)
     conf_bytes[1] := (config & 0xFF);
     I2C_writewords_mem(_ADS1115_I2C, 0x48, _REGISTER_CONFIG, 1, config);
     pause(1000/_SPS +1);
-    I2C_readwords_mem (_ADS1115_I2C, 0x48, _REGISTER_CONVERT, 1, &result)
+    I2C_readwords_mem(_ADS1115_I2C, 0x48, _REGISTER_CONVERT, 1, &result)
     return result;
 endfunc
 
-func readADCDifferential()
-
-endfunc
-
 func startContinuousConversion()
-
-endfunc
-
-func startContinuousDifferentialConversion()
 
 endfunc
 
@@ -96,19 +94,14 @@ func stopContinuousConversion()
 
 endfunc
 
-
 func getLastConversionResults()
 
 endfunc
 
-func startSingleEndedComparator()
+func startComparator()
 
 endfunc
 
-
-func startDifferentialComparator()
-
-endfunc
 
 //CONFIG FUNCTIONS
 func newconfig()
@@ -148,21 +141,20 @@ func selectDiffChannel(var config, var ch1, var ch2)
                     return conf | _MUX_DIFF_0_1;
                 case 3:
                     return conf | _MUX_DIFF_0_3;
-        endswitch
+            endswitch
         case 1:
             switch (ch2)
                 case 3:
                     return conf | _MUX_DIFF_1_3;
-        endswitch
+            endswitch
         case 2:
             switch (ch2)
                 case 3:
                     return conf | _MUX_DIFF_2_3;
-        endswitch
+            endswitch
     endswitch
     return -1
-
- endfunc
+endfunc
 
 func selectSPS(var config, var SPS)
     var conf, mask = 0xFFFF - _DR_MASK;
