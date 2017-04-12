@@ -11,25 +11,39 @@ var AT24C32_i2c := 1;
 
 //EEPROM functions
 func EEPROM_writebytes(var offset, var nbytes, var buf)
-    if !checkOffset(offset)
+    var ack;    
+    var endp := checkWriteOffset(offset, nbytes);     
+    if (endp == -1)
         return -1;
     endif
-    var ack;
-    ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, &buf);
-    return ack;
+    if (endp == 0)
+        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, &buf);
+        return ack;
+    else
+        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset, nbytes-endp, &buf);
+        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset+nbytes-endp, endp, &buf[nbytes-endp]);
+        return ack;
+    endif
 endfunc
 
 func RTC_RAM_writewords(var offset, var nwords, var buf)
-    if !checkOffset(offset)
+    var ack;    
+    var endp := checkWriteOffset(offset, nwords * 2);     
+    if (endp == -1)
         return -1;
     endif
-    var ack;
-    ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset, nwords, &buf);
-    return ack;
+    if (endp == 0)
+        ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset, nwords, &buf);
+        return ack;
+    else
+        ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset, nwords - endp / 2, &buf);
+        ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset + nwords * 2 - endp, endp / 2, &buf[nwords - endp / 2]);
+        return ack;
+    endif
 endfunc
 
 func RTC_RAM_readbytes(var offset, var nbytes, var buf)
-    if !checkOffset(offset)
+    if (checkReadOffset(offset, nbytes) == -1)
         return -1;
     endif
     var ack;
@@ -38,7 +52,7 @@ func RTC_RAM_readbytes(var offset, var nbytes, var buf)
 endfunc
 
 func RTC_RAM_readwords(var offset, var nwords, var buf)
-    if !checkOffset(offset)
+    if (checkReadOffset(offset, nwords * 2) == -1)
         return -1;
     endif
     var ack;
@@ -46,12 +60,28 @@ func RTC_RAM_readwords(var offset, var nwords, var buf)
     return ack;
 endfunc
 
-func checkOffset(var offset)
+func checkWriteOffset(var offset, var nbytes)
     if (offset >= 0 && offset <=0xFFF)
-        return TRUE;
+        var endp;
+        endp := (offset & 0x001F) + nbytes;
+        if (endp > 0x001F) //page boundary will be met
+	return (endp - 0x001F);
+        else:
+	return 0; 
+        endif    
     else
-        return FALSE;
+        return -1;
     endif
 endfunc
+
+func checkReadOffset(var offset, var nbytes)
+    if (offset >= 0 && offset + nbytes <=0xFFF)
+        return 0; 
+    else
+        return -1;
+    endif
+endfunc
+
+
 
 
