@@ -86,7 +86,7 @@ func readADC(var conf)
     conf_bytes[0] := HIbyte(config);
     conf_bytes[1] := LObyte(config);
     I2C_writewords_mem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONFIG, 1, config);
-    pause(1000 / _SPS +1);
+    pause(1000 / _DR[DR_INDEX]  +1);
     I2C_readwords_mem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result)
     return result;
 endfunc
