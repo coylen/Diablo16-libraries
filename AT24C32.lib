@@ -26,7 +26,7 @@ func EEPROM_writebytes(var offset, var nbytes, var buf)
     endif
 endfunc
 
-func RTC_RAM_writewords(var offset, var nwords, var buf)
+func EEPROM_writewords(var offset, var nwords, var buf)
     var ack;    
     var endp := checkWriteOffset(offset, nwords * 2);     
     if (endp == -1)
@@ -42,7 +42,7 @@ func RTC_RAM_writewords(var offset, var nwords, var buf)
     endif
 endfunc
 
-func RTC_RAM_readbytes(var offset, var nbytes, var buf)
+func EEPROM_readbytes(var offset, var nbytes, var buf)
     if (checkReadOffset(offset, nbytes) == -1)
         return -1;
     endif
@@ -51,7 +51,7 @@ func RTC_RAM_readbytes(var offset, var nbytes, var buf)
     return ack;
 endfunc
 
-func RTC_RAM_readwords(var offset, var nwords, var buf)
+func EEPROM_readwords(var offset, var nwords, var buf)
     if (checkReadOffset(offset, nwords * 2) == -1)
         return -1;
     endif
