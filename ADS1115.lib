@@ -77,8 +77,8 @@ var _DR_INDEX, _PGA_INDEX
 var ADS1115_i2c := 1;
 var ADS1115_Address := 0x48;
 
-func readADC(var conf, var result)
-    var config;
+func readADC(var conf)
+    var config, result;
     config := _CQUE_NONE | _CLAT_NONLAT | _CPOL_ACTVLOW | _CMODE_TRAD | _MODE_SINGLE;
     config |= conf;
     config |= _OS_SINGLE;
@@ -91,8 +91,8 @@ func readADC(var conf, var result)
     return result;
 endfunc
 
-func startContinuousConversion(var conf, var result)
-    var config;
+func startContinuousConversion(var conf)
+    var config, result;
     config := _CQUE_NONE | _CLAT_NONLAT | _CPOL_ACTVLOW | _CMODE_TRAD | _MODE_CONTIN;
     config |= conf;
     config |= _OS_SINGLE;
@@ -100,7 +100,7 @@ func startContinuousConversion(var conf, var result)
     conf_bytes[0] := HIbyte(config);
     conf_bytes[1] := LObyte(config);
     I2C_writewords_mem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONFIG, 1, config);
-    pause(1000 / _SPS +1);
+    pause(1000 / _DR[DR_INDEX] +1);
     I2C_readwords_mem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result)
     return result;
 endfunc
@@ -115,7 +115,8 @@ func stopContinuousConversion()
     return TRUE;
 endfunc
 
-func getLastConversionResults(var result)
+func getLastConversionResults()
+    var result
     I2C_readwords_mem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result)
     return result;
 endfunc
@@ -250,5 +251,17 @@ func selectSPSINDEX(var config, var index)
         return -1;
     endif
 endfunc
+
+func calcvoltage(var result, var voltage)
+    var cal[2], tmp[2];
+    flt_ITOF(cal, result);
+    flt_ITOF(tmp, _PGA[_PGA_INDEX]);
+    flt_DIV(tmp, tmp, "32768000.0");
+    flt_MUL(voltage, cal, tmp);
+endfunc
+    
+
+
+
 
 
