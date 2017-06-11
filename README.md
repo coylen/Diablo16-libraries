@@ -196,28 +196,28 @@ Function to read time and date fromthe Diablo16 internal system clockand copy it
 
 #### RTC_RAM_writebytes(var offset, var nbytes, var &buf)
 Function to write bytes into the ram addresses of the DS1307 chip.  
-inputs: offset - offset location within memory valid range(0x08-0x3F)  
+inputs: offset - offset location within memory valid range(0x00-0x38)  
         nbytes - number of bytes to write  
         &buf - address of array to write, bytes occupy lower byte of each word in the array  
 returns: 1 if successful, 0 if unsuccessful  
 
 #### RTC_RAM_writewords(var offset, var nwords, var &buf)
 Function to write words into the ram addresses of the DS1307 chip.  
-inputs: offset - offset location in bytes within memory valid range(0x08-0x3F)  
+inputs: offset - offset location in bytes within memory valid range(0x00-0x38)  
         nwords - number of words to write  
         &buf - address of array to write  
 returns: 1 if successful, 0 if unsuccessfull  
 
 #### RTC_RAM_readbytes(var offset, var nbytes, var &buf)
 Function to read bytes from the ram addresses of the DS1307 chip.  
-inputs: offset - offset location within memory valid range(0x08-0x3F)  
+inputs: offset - offset location within memory valid range(0x00-0x38)  
         nbytes - number of bytes to read  
         &buf - address of array to store read data, bytes occupy lower byte of each word in the array  
 returns: 1 if successful, 0 if unsuccessful  
 
 #### RTC_RAM_readwords(var offset, var nwords, var buf)
 Function to read words from the ram addresses of the DS1307 chip.  
-inputs: offset - offset location in bytes within memory valid range(0x08-0x3F)  
+inputs: offset - offset location in bytes within memory valid range(0x00-0x38)  
         nwords - number of words to read  
         &buf - address of array to store read data  
 returns: 1 if successful, 0 if unsuccessfull  
