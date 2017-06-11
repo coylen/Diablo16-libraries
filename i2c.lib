@@ -209,7 +209,7 @@ func I2C1_readwords_mem(var addr, var memaddr, var nwords, var buf)
 endfunc
 
 func I2C1_writewords_mem(var addr, var memaddr, var nwords, var buf)
-    var i, ack;
+    var i, ack, status;
     I2C1_Start();
     ack := I2C1_Write( addr << 1);
     if (ack !=TRUE)
@@ -341,7 +341,7 @@ func I2C1_readwords_mem16(var addr, var memaddr, var nwords, var buf)
 endfunc
 
 func I2C1_writewords_mem16(var addr, var memaddr, var nwords, var buf)
-    var i, ack;
+    var i, ack, status;
     I2C1_Start();
     ack := I2C1_Write( addr << 1);
     if (ack !=TRUE)
@@ -404,7 +404,7 @@ func I2C2_scan(var devices)
     return (devices);
 endfunc
 
-func I2C2_readfrom_into(var addr, var nbytes, var buf)
+func I2C2_readbytes(var addr, var nbytes, var buf)
     var i, ack;
     I2C2_Start();
     ack := I2C2_Write(addr<<1 | 1);
@@ -424,7 +424,7 @@ func I2C2_readfrom_into(var addr, var nbytes, var buf)
     endif
 endfunc
 
-func I2C2_writeto(var addr, var nbytes, var buf)
+func I2C2_writebytes(var addr, var nbytes, var buf)
     var i, status;
     I2C2_Start();
     status := I2C2_Write(addr<<1);
@@ -444,7 +444,7 @@ func I2C2_writeto(var addr, var nbytes, var buf)
     endif
 endfunc
 
-func I2C2_readfrom_mem_into(var addr, var memaddr, var nbytes, var buf)
+func I2C2_readbytes_mem(var addr, var memaddr, var nbytes, var buf)
     var i, ack;
     I2C2_Start();
     ack := I2C2_Write(addr<<1);
@@ -474,7 +474,7 @@ func I2C2_readfrom_mem_into(var addr, var memaddr, var nbytes, var buf)
     return TRUE;
 endfunc
 
-func I2C2_writeto_mem(var addr, var memaddr, var nbytes, var buf)
+func I2C2_writebytes_mem(var addr, var memaddr, var nbytes, var buf)
     var i, ack;
     I2C2_Start();
     ack := I2C2_Write( addr << 1);
@@ -581,7 +581,7 @@ func I2C2_readwords_mem(var addr, var memaddr, var nwords, var buf)
 endfunc
 
 func I2C2_writewords_mem(var addr, var memaddr, var nwords, var buf)
-    var i, ack;
+    var i, ack, status;
     I2C2_Start();
     ack := I2C2_Write( addr << 1);
     if (ack !=TRUE)
@@ -713,7 +713,7 @@ func I2C2_readwords_mem16(var addr, var memaddr, var nwords, var buf)
 endfunc
 
 func I2C2_writewords_mem16(var addr, var memaddr, var nwords, var buf)
-    var i, ack;
+    var i, ack, status;
     I2C2_Start();
     ack := I2C2_Write( addr << 1);
     if (ack !=TRUE)
@@ -775,7 +775,7 @@ func I2C3_scan(var devices)
     return (devices);
 endfunc
 
-func I2C3_readfrom_into(var addr, var nbytes, var buf)
+func I2C3_readbytes(var addr, var nbytes, var buf)
     var i, ack;
     I2C3_Start();
     ack := I2C3_Write(addr<<1 | 1);
@@ -795,7 +795,7 @@ func I2C3_readfrom_into(var addr, var nbytes, var buf)
     endif
 endfunc
 
-func I2C3_writeto(var addr, var nbytes, var buf)
+func I2C3_writebytes(var addr, var nbytes, var buf)
     var i, status;
     I2C3_Start();
     status := I2C3_Write(addr<<1);
@@ -815,7 +815,7 @@ func I2C3_writeto(var addr, var nbytes, var buf)
     endif
 endfunc
 
-func I2C3_readfrom_mem_into(var addr, var memaddr, var nbytes, var buf)
+func I2C3_readbytes_mem(var addr, var memaddr, var nbytes, var buf)
     var i, ack;
     I2C3_Start();
     ack := I2C3_Write(addr<<1);
@@ -845,7 +845,7 @@ func I2C3_readfrom_mem_into(var addr, var memaddr, var nbytes, var buf)
     return TRUE;
 endfunc
 
-func I2C3_writeto_mem(var addr, var memaddr, var nbytes, var buf)
+func I2C3_writebytes_mem(var addr, var memaddr, var nbytes, var buf)
     var i, ack;
     I2C3_Start();
     ack := I2C3_Write( addr << 1);
@@ -952,7 +952,7 @@ func I2C3_readwords_mem(var addr, var memaddr, var nwords, var buf)
 endfunc
 
 func I2C3_writewords_mem(var addr, var memaddr, var nwords, var buf)
-    var i, ack;
+    var i, ack, status;
     I2C3_Start();
     ack := I2C3_Write( addr << 1);
     if (ack !=TRUE)
@@ -1084,7 +1084,7 @@ func I2C3_readwords_mem16(var addr, var memaddr, var nwords, var buf)
 endfunc
 
 func I2C3_writewords_mem16(var addr, var memaddr, var nwords, var buf)
-    var i, ack;
+    var i, ack, status;
     I2C3_Start();
     ack := I2C3_Write( addr << 1);
     if (ack !=TRUE)
@@ -1243,7 +1243,7 @@ func I2C_readwords_mem(var i2c, var addr, var memaddr, var nwords, var buf)
             return I2C2_readwords_mem (addr, memaddr, nwords, buf);
             break;
         case 3:
-            return I2C3_readfrom_mem_into(addr, memaddr, nwords, buf);
+            return I2C3_readwords_mem(addr, memaddr, nwords, buf);
             break;
     endswitch
     return 0;

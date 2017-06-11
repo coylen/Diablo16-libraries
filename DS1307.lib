@@ -163,7 +163,7 @@ func RTC_SetDate(var date)
     var ack, date_bcd;
     //encode hours
     date_bcd := int_to_bcd(date);
-    ack := I2C_writetbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DATE, 1, &date_bcd);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DATE, 1, &date_bcd);
     return ack;
 endfunc
 
@@ -246,7 +246,7 @@ endfunc
 //RAM functions
 func RTC_RAM_writebytes(var offset, var nbytes, var buf)
     var ack;
-    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
+    ack := I2C_writebytes_mem16(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
     return ack;
 endfunc
 
@@ -258,13 +258,13 @@ endfunc
 
 func RTC_RAM_readbytes(var offset, var nbytes, var buf)
     var ack;
-    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
+    ack := I2C_readbytes_mem16(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
     return ack;
 endfunc
 
 func RTC_RAM_readwords(var offset, var nwords, var buf)
     var ack;
-    ack := I2C_writewords_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, &buf);
+    ack := I2C_readwords_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, &buf);
     return ack;
 endfunc
 
