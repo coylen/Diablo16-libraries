@@ -246,7 +246,7 @@ endfunc
 //RAM functions
 func RTC_RAM_writebytes(var offset, var nbytes, var buf)
     var ack;
-    ack := I2C_writebytes_mem16(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
     return ack;
 endfunc
 
@@ -258,7 +258,7 @@ endfunc
 
 func RTC_RAM_readbytes(var offset, var nbytes, var buf)
     var ack;
-    ack := I2C_readbytes_mem16(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
     return ack;
 endfunc
 
