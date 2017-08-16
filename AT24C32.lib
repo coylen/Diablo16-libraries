@@ -9,74 +9,74 @@
 #constant AT24C32_Address        0x50
 var AT24C32_i2c := 1;
 
-//EEPROM functions
-func EEPROM_writebytes(var offset, var nbytes, var buf)
-    var ack,endp;    
-    endp := checkWriteOffset(offset, nbytes);     
+//AT24C32 functions
+func AT24C32_WriteBytes(var offset, var nbytes, var buf)
+    var ack,endp;
+    endp := checkWriteOffset(offset, nbytes);
     if(endp == -1)
         return -1;
     endif
     if(endp == 0)
-        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, &buf);
+        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, &buf);
         return ack;
     else
-        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset, nbytes-endp, &buf);
-        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset+nbytes-endp, endp, &buf[nbytes-endp]);
+        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes-endp, &buf);
+        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset+nbytes-endp, endp, &buf[nbytes-endp]);
         return ack;
     endif
 endfunc
 
-func EEPROM_writewords(var offset, var nwords, var buf)
+func AT24C32_WriteWords(var offset, var nwords, var buf)
     var ack, endp;
     endp := checkWriteOffset(offset, nwords * 2);
     if(endp == -1)
         return -1;
     endif
     if(endp == 0)
-        ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset, nwords, &buf);
+        ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset, nwords, &buf);
         return ack;
     else
-        ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset, nwords - endp / 2, &buf);
-        ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset + nwords * 2 - endp, endp / 2, &buf[nwords - endp / 2]);
+        ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset, nwords - endp / 2, &buf);
+        ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset + nwords * 2 - endp, endp / 2, &buf[nwords - endp / 2]);
         return ack;
     endif
 endfunc
 
-func EEPROM_readbytes(var offset, var nbytes, var buf)
+func AT24C32_ReadBytes(var offset, var nbytes, var buf)
     if (checkReadOffset(offset, nbytes) == -1)
         return -1;
     endif
     var ack;
-    ack := I2C_readbytes_mem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, &buf);
+    ack := I2C_ReadBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, &buf);
     return ack;
 endfunc
 
-func EEPROM_readwords(var offset, var nwords, var buf)
+func AT24C32_ReadWords(var offset, var nwords, var buf)
     if (checkReadOffset(offset, nwords * 2) == -1)
         return -1;
     endif
     var ack;
-    ack := I2C_writewords_mem16(AT24C32_i2c, AT24C32_Address, offset, nwords, &buf);
+    ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset, nwords, &buf);
     return ack;
 endfunc
 
-func checkWriteOffset(var offset, var nbytes)
+func AT24C32_CheckWriteOffset(var offset, var nbytes)
     if (offset >= 0 && offset <=0xFFF)
         var endp;
         endp := (offset & 0x001F) + nbytes;
         if (endp > 0x001F) //page boundary will be met
-	return (endp - 0x001F);
+    return (endp - 0x001F);
         else:
-	return 0; 
-        endif    
+    return 0;
+        endif
     else
         return -1;
     endif
 endfunc
 
-func checkReadOffset(var offset, var nbytes)
+func AT24C32_CheckReadOffset(var offset, var nbytes)
     if (offset >= 0 && offset + nbytes <=0xFFF)
-        return 0; 
+        return 0;
     else
         return -1;
     endif
