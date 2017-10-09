@@ -16,6 +16,9 @@
 #constant REG_DS1307_YEAR       6
 #constant REG_DS1307_CONTROL    7
 #constant REG_DS1307_RAM        8
+#DATA
+    byte DAYS_IN_MONTHS 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+#END
 
 var DS1307_i2c := 1;
 #inherit "i2c.lib"
@@ -35,10 +38,23 @@ func int_to_bcd(var intvalue)
     return out;
 endfunc
 
+//function to calculate days since 1 Jan 2000
+func date_to_days(var year, var month, var day)
+    var days, i;
+    days := day;
+    for(i := 0; i < month - 1; i++)
+        days += DAYS_IN_MONTHS[i];
+    next
+    if(month > 2 && year % 4 ==0)
+        days++;
+    endif
+    return days + 365 * year + (year + 3) / 4 -1;
+endfunc
+
 //FUNCTIONS TO GET INDIVIDUAL COMPONENTS
 func RTC_GetSeconds()
     var ack, secs, secs_bcd;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_SECONDS, 1, &secs_bcd);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_SECONDS, 1, &secs_bcd);
     if(ack == TRUE)
         secs := bcd_to_int(secs_bcd & 0x7F);
         return secs;
@@ -49,7 +65,7 @@ endfunc
 
 func RTC_GetMinutes()
     var ack, mins, mins_bcd;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_MINUTES, 1, &mins_bcd);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_MINUTES, 1, &mins_bcd);
     if(ack == TRUE)
         mins := bcd_to_int(mins_bcd & 0x7F);
         return mins;
@@ -60,7 +76,7 @@ endfunc
 
 func RTC_GetHours()
     var ack, hrs, hrs_bcd;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_HOURS, 1, &hrs_bcd);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_HOURS, 1, &hrs_bcd);
     if(ack == TRUE)
         //check format
         if ((hrs_bcd >> 6) & 0x01 == 0x01)
@@ -84,7 +100,7 @@ endfunc
 
 func RTC_GetDay()
     var ack, day, day_bcd;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_DAY, 1, &day_bcd);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DAY, 1, &day_bcd);
     if(ack == TRUE)
         day := bcd_to_int(day_bcd & 0x07);
         return day;
@@ -95,7 +111,7 @@ endfunc
 
 func RTC_GetDate()
     var ack, date, date_bcd;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_DATE, 1, &date_bcd);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DATE, 1, &date_bcd);
     if(ack == TRUE)
         date := bcd_to_int(date_bcd & 0x3F);
         return date;
@@ -106,7 +122,7 @@ endfunc
 
 func RTC_GetMonth()
     var ack, month, month_bcd;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_MONTH, 1, &month_bcd);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_MONTH, 1, &month_bcd);
     if(ack == TRUE)
         month := bcd_to_int(month_bcd & 0x1F);
         return month;
@@ -117,7 +133,7 @@ endfunc
 
 func RTC_GetYear()
     var ack, year, year_bcd;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_YEAR, 1, &year_bcd);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_YEAR, 1, &year_bcd);
     if(ack == TRUE)
         year := bcd_to_int(year_bcd & 0xFF);
         return year;
@@ -129,58 +145,51 @@ endfunc
 //FUNCTIONS TO SET INDIVIDUAL COMPONENTS
 func RTC_SetSeconds(var seconds)
     var ack, secs_bcd;
-    //encode seconds
     secs_bcd := int_to_bcd(seconds);
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_SECONDS, 1, &secs_bcd);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_SECONDS, 1, &secs_bcd);
     return ack;
 endfunc
 
 func RTC_SetMinutes(var minutes)
     var ack, mins_bcd;
-    //encode minutes
     mins_bcd := int_to_bcd(minutes);
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_MINUTES, 1, &mins_bcd);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_MINUTES, 1, &mins_bcd);
     return ack;
 endfunc
 
 func RTC_SetHours(var hours)
     var ack, hrs_bcd;
-    //encode hours
     hrs_bcd := int_to_bcd(hours);
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_HOURS, 1, &hrs_bcd);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_HOURS, 1, &hrs_bcd);
     return ack;
 endfunc
 
 func RTC_SetDay(var day)
     var ack, day_bcd;
-    //encode hours
     day_bcd := int_to_bcd(day);
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_DAY, 1, &day_bcd);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DAY, 1, &day_bcd);
     return ack;
 endfunc
 
 func RTC_SetDate(var date)
     var ack, date_bcd;
-    //encode hours
     date_bcd := int_to_bcd(date);
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_DATE, 1, &date_bcd);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_DATE, 1, &date_bcd);
     return ack;
 endfunc
 
 func RTC_SetMonth(var month)
     var ack, month_bcd;
-    //encode hours
     month_bcd := int_to_bcd(month);
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_MONTH, 1, &month_bcd);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_MONTH, 1, &month_bcd);
     return ack;
 endfunc
 
 func RTC_SetYear(var year)
     var ack, year_bcd;
-    //encode hours
     year_bcd := int_to_bcd(year);
     print(year_bcd) ;
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_YEAR, 1, &year_bcd);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_YEAR, 1, &year_bcd);
     return ack;
 endfunc
 
@@ -243,28 +252,100 @@ func sys_to_RTC()
     RTC_SetTime(hr, min, sec);
 endfunc
 
+func Corrected_RTC_to_sys()
+    var msec, sec, min, hour, day, month, year;
+    var delta_sec, delta_min, delta_hr, delta_day, delta_month, delta_year;
+    // original set time and date
+    //TODO: encode and read into RAM
+    //TODO: JUST STORE DAYS SINCE 2000
+    var base_year := 17;
+    var base_month := 9;
+    var base_day := 5;
+    var base_hr := 19;
+    var base_min := 20;
+    var base_sec := 25;
+    var seconds_per_day_x100 := -314;
+    RTC_GetDateVar(&year, &month, &day);
+    RTC_GetTimeVar(&hour, &min, &sec);
+
+    //calculate days since set
+    var base_days, current_days, error_days;
+    var error_seconds;
+    //TODO: REPLACE FROM RAM
+    base_days := date_to_days(base_year, base_month, base_day);
+//    print("base days :", base_days,"\r\n");
+    current_days := date_to_days(year, month, day);
+//    print("current:",day,"/",month,":",year,"\r\n");
+//    print("current days :", current_days,"\r\n");
+    error_days := current_days - base_days;
+    //first calculate for whole 100 day intervals
+    error_seconds := error_days / 100 * seconds_per_day_x100;
+    //Now round the remainder, elaborate method to prevent overrun
+    //and do floating point maths in integers
+    var sub_100_days_secs;
+    //remainder of 100 days
+    sub_100_days_secs := error_days % 100;
+    //times seconds per
+    sub_100_days_secs *= seconds_per_day_x100;
+    sub_100_days_secs /= 100;
+    error_seconds += sub_100_days_secs;
+//test debug code
+//    print(error_days," ",error_seconds);
+    //Apply error seconds and watch for overrun
+    sec += error_seconds % 60;
+    if (sec < 0)
+        min--;
+        sec += 60;
+    endif
+    if (sec >= 60)
+        min++;
+        sec -= 60;
+    endif
+    min += error_seconds / 60;
+    while (min >= 60)
+        hour++;
+        min -= 60;
+    wend
+    if (hour >= 24)
+        day++;
+        hour -= 24;
+    endif
+    if (day > DAYS_IN_MONTHS[month - 1])
+        day -= DAYS_IN_MONTHS[month - 1];
+        month++;
+    endif
+    if (month > 12)
+        year++;
+        month -=12;
+    endif
+    //actually set time
+    sys_SetDate(year, month, day);
+    sys_SetTime(hour, min, sec);
+    print("TIME ",hour,":",min,":",sec,"\r\n");
+endfunc
+
 //RAM functions
-func RTC_RAM_WriteBytes(var offset, var nbytes, var buf)
+func RTC_RAM_writebytes(var offset, var nbytes, var buf)
     var ack;
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
+    ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, buf);
     return ack;
 endfunc
 
-func RTC_RAM_WriteWords(var offset, var nwords, var buf)
+func RTC_RAM_writewords(var offset, var nwords, var buf)
     var ack;
-    ack := I2C_WriteWordsMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, &buf);
+    ack := I2C_writewords_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, buf);
     return ack;
 endfunc
 
-func RTC_RAM_ReadBytes(var offset, var nbytes, var buf)
+func RTC_RAM_readbytes(var offset, var nbytes, var buf)
     var ack;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, &buf);
+    ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, buf);
     return ack;
 endfunc
 
-func RTC_RAM_ReadWords(var offset, var nwords, var buf)
+func RTC_RAM_readwords(var offset, var nwords, var buf)
     var ack;
-    ack := I2C_ReadWordsMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, &buf);
+    ack := I2C_readwords_mem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, buf);
     return ack;
 endfunc
 
