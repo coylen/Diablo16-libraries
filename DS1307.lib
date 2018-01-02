@@ -9,7 +9,8 @@
 //  First word  -  days since 2000
 //  Second word -  upper byte hours when set - lower byte minutes when set
 //  Third word  -  error in seconds drift per 100 days
-//  Fourth word -  number of corrections (used in weighting adjustments)
+//  Fourth word -  upper byte number of corrections (used in weighting adjustments)
+//				-  lower byte checksum TODO (choose checksum method)
 //  Due to the limitation of words the maximum error possible is +/-32768 seconds
 //  Based on typical drift for these chips this equates to over 10 years between sets
 //
@@ -437,6 +438,7 @@ func RTC_set_drift_parameters(var days_since_2000_set, var hour_set, var mins_se
     RTC_RAM_writebytes(3,1,&min_set);
     RTC_RAM_writewords(4,3,&drift_per_day_x100);
     RTC_RAM_writewords(6,1,&corrections);
+	//TODO checksum
 endfunc
 
 func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins_set, var sec_set)
@@ -447,6 +449,7 @@ func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins
     RTC_RAM_readbytes(3, 1, &current_min_set);
     RTC_RAM_readwords(4, 1, &current_drift);
     RTC_RAM_readwords(6, 1, &corrections);
+	//TODO check checksum
     if (current_days_since_2000_set != -1 && current_hour_set != 255 && current_min_set != 255)
         var rtc_year, rtc_month, rtc_day, rtc_hour, rtc_min, rtc_sec;
         var drift_days[2], drift_secs[2], hour[2], min[2], temp[2];
