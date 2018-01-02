@@ -2,6 +2,20 @@
 //  With a DIABLO16 based intelligent display module from 4D Systems
 //  This library is dependant on my i2c function library
 //
+//  This Library introduces drift adjustment for the DS1307 based RTC boards
+//  The adjustment is based on the time since set and a known drift quantity
+//  These values are calculated every time the unit is reset and are stored
+//  in the first three words of the RAM:
+//  First word  -  days since 2000
+//  Second word -  upper byte hours when set - lower byte minutes when set
+//  Third word  -  error in seconds drift per 100 days
+//  Fourth word -  number of corrections (used in weighting adjustments)
+//  Due to the limitation of words the maximum error possible is +/-32768 seconds
+//  Based on typical drift for these chips this equates to over 10 years between sets
+//
+//  Library also introduces BST adjustment,  this assumes that RTC is always set to UTC
+//  and system clock may be set to either depending on BST flag.
+//
 //  Copyright Neil Coyle 2017 Released under the MIT Licence
 
 #constant DS1307_Address        0x68
@@ -16,14 +30,18 @@
 #constant REG_DS1307_YEAR       6
 #constant REG_DS1307_CONTROL    7
 #constant REG_DS1307_RAM        8
+
+#constant FALSE, TRUE
 #DATA
     byte DAYS_IN_MONTHS 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+    byte BST_START 29, 28, 27, 26, 25, 31, 30
+    byte BST_END   25, 31, 30, 29, 28, 27, 26
 #END
 
 var DS1307_i2c := 1;
 #inherit "i2c.lib"
 
-// Helper functions to translate binary coded decimals into standard integers
+//  Helper functions to translate binary coded decimals into standard integers
 func bcd_to_int(var bcd)
     var out;
     out := bcd & 0x0F;
@@ -38,7 +56,7 @@ func int_to_bcd(var intvalue)
     return out;
 endfunc
 
-//function to calculate days since 1 Jan 2000
+//  Function to calculate days since 1 Jan 2000
 func date_to_days(var year, var month, var day)
     var days, i;
     days := day;
@@ -51,7 +69,38 @@ func date_to_days(var year, var month, var day)
     return days + 365 * year + (year + 3) / 4 -1;
 endfunc
 
-//FUNCTIONS TO GET INDIVIDUAL COMPONENTS
+//  Function to calculate day of week
+//  0 - Sunday 1 - Monday ... 6 - Saturday
+func day_of_week(var year, var month, var day)
+    var days_since_2000;
+    days_since_2000 := date_to_days(year, month, day);
+    // 1st Jan 2000 was saturday, therefore
+    return (days_since_2000 + 6) % 7;
+endfunc
+
+//  Function to determine if in summer time
+//  Summer time runs from the last sunday in march
+//  to the last sunday in october
+func is_it_BST(var year, var month, var day)
+    if (month > 3 && month < 10)
+        return TRUE;
+    endif
+    if (month == 3)
+        var first_of_march := day_of_week(year, 3, 1);
+        if (day >= BST_START[first_of_march])
+            return TRUE;
+        endif
+    endif
+    if (month == 10)
+        var first_of_march := day_of_week(year, 3, 1);
+        if (day <= BST_END[first_of_march] )
+            return TRUE;
+        endif
+    endif
+    return FALSE;
+endfunc
+
+//  FUNCTIONS TO GET INDIVIDUAL COMPONENTS OF RTC TIME
 func RTC_GetSeconds()
     var ack, secs, secs_bcd;
     ack := I2C_readbytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_SECONDS, 1, &secs_bcd);
@@ -142,7 +191,7 @@ func RTC_GetYear()
     endif
 endfunc
 
-//FUNCTIONS TO SET INDIVIDUAL COMPONENTS
+//  FUNCTIONS TO SET INDIVIDUAL COMPONENTS OF RTC
 func RTC_SetSeconds(var seconds)
     var ack, secs_bcd;
     secs_bcd := int_to_bcd(seconds);
@@ -187,27 +236,27 @@ endfunc
 
 func RTC_SetYear(var year)
     var ack, year_bcd;
-    year_bcd := int_to_bcd(year);
+    year_bcd := int_to_bcd(year % 100); //needed to convert from 4 digit date notation to 2 digit as used in DS1307
     print(year_bcd) ;
     ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_YEAR, 1, &year_bcd);
     return ack;
 endfunc
 
-// FUNCTION TO GET TIME OFF I2C_RTC
+//  FUNCTION TO GET TIME OFF I2C_RTC
 func RTC_GetTimeVar(var hour, var minute, var second)
     *hour := RTC_GetHours();
     *minute := RTC_GetMinutes();
     *second := RTC_GetSeconds();
 endfunc
 
-// FUNCTION TO GET DATE OFF I2C_RTC
+//  FUNCTION TO GET DATE OFF I2C_RTC
 func RTC_GetDateVar(var year, var month, var day)
     *year := RTC_GetYear();
     *month := RTC_GetMonth();
     *day := RTC_GetDate();
 endfunc
 
-//FUNCTIONS TO SET DATE AND TIME
+//  FUNCTIONS TO SET RTC DATE AND TIME
 func RTC_SetTime(var hour, var minute, var second)
     var ack;
     ack := RTC_SetHours(hour);
@@ -233,8 +282,17 @@ func RTC_SetAllDate(var year, var month, var day)
     endif
 endfunc
 
-//FUNCTIONS TO SYNCRONISE RTC WITH SYSTEM CLOCK
-func RTC_to_sys()
+//  FUNCTIONS TO SYNCRONISE RTC WITH SYSTEM CLOCK
+//  These functions include adjustments for drift and automatic
+//  saving/updating of drift parameters, if none drift adjusted values
+//  are rrquired the basic functions to read off the RTC should be used.
+//
+//  These default functions include BST adjustments.  The Non-BST aware
+//  alternatives should be used if the system clock does not includes
+//  daylight savings adjustments, or if the adjustments are considered elsewhere.
+
+//HACK: TO BE DELETED AS ADJUSTED ONLY TO BE USED
+func RTC_to_sys_no_BST()
     var msec, sec, min, hr, day, month, year;
     RTC_GetDateVar(&year, &month, &day);
     sys_SetDate(year, month, day);
@@ -244,18 +302,44 @@ func RTC_to_sys()
 endfunc
 
 func sys_to_RTC()
+    do_sys_to_RTC(TRUE);
+endfunc
+
+func sys_to_RTC_no_BST()
+    do_sys_to_RTC(FALSE);
+endfunc
+
+func do_sys_to_RTC(var include_BST)
     var msec, sec, min, hr, day, month, year;
     sys_GetDateVar(&year, &month, &day);
-    RTC_SetAllDate(year, month, day);
-
     sys_GetTimeVar(&hr, &min, &sec, &msec);
+    //adjust time if BST and chase through potential overruns
+    if (include_BST && is_it_BST(year, month, day))
+        if(hr > 1)
+            hr -= 1;
+        else
+            hr = 23;
+            day -= 1;
+            if(day == 0)
+                if (month > 1)
+                    month -= 1;
+                else
+                    month := 12
+                    year -= 1;
+                endif
+                day := DAYS_IN_MONTHS[month - 1];
+            endif
+        endif
+    endif
+    //CALCULATE AND SET DRIFT PARAMETERS
+    RTC_adjust_drift_parameters(date_to_days(year, month, day), hr, min, sec)
+    RTC_SetAllDate(year, month, day);
     RTC_SetTime(hr, min, sec);
 endfunc
 
-func Corrected_RTC_to_sys()
+func RTC_to_sys()
     var msec, sec, min, hour, day, month, year;
     var delta_sec, delta_min, delta_hr, delta_day, delta_month, delta_year;
-    // original set time and date
     //TODO: encode and read into RAM
     //TODO: JUST STORE DAYS SINCE 2000
     var base_year := 17;
@@ -273,10 +357,7 @@ func Corrected_RTC_to_sys()
     var error_seconds;
     //TODO: REPLACE FROM RAM
     base_days := date_to_days(base_year, base_month, base_day);
-//    print("base days :", base_days,"\r\n");
     current_days := date_to_days(year, month, day);
-//    print("current:",day,"/",month,":",year,"\r\n");
-//    print("current days :", current_days,"\r\n");
     error_days := current_days - base_days;
     //first calculate for whole 100 day intervals
     error_seconds := error_days / 100 * seconds_per_day_x100;
@@ -289,39 +370,127 @@ func Corrected_RTC_to_sys()
     sub_100_days_secs *= seconds_per_day_x100;
     sub_100_days_secs /= 100;
     error_seconds += sub_100_days_secs;
-//test debug code
-//    print(error_days," ",error_seconds);
+
     //Apply error seconds and watch for overrun
     sec += error_seconds % 60;
-    if (sec < 0)
-        min--;
-        sec += 60;
-    endif
-    if (sec >= 60)
-        min++;
-        sec -= 60;
-    endif
     min += error_seconds / 60;
-    while (min >= 60)
-        hour++;
-        min -= 60;
-    wend
-    if (hour >= 24)
-        day++;
-        hour -= 24;
-    endif
-    if (day > DAYS_IN_MONTHS[month - 1])
-        day -= DAYS_IN_MONTHS[month - 1];
-        month++;
-    endif
-    if (month > 12)
-        year++;
-        month -=12;
+    if (error_seconds < 0)
+        if (sec < 0)
+            min--;
+            sec += 60;
+        endif
+        while(min < 0)
+            hour--;
+            min += 60;
+        wend
+        if (hour < 0)
+            day--;
+            hour += 24;
+        endif
+        if (day < 1)
+            month--;
+            day += DAYS_IN_MONTHS[month - 1];
+        endif
+        if (month < 1)
+            year--;
+            month +=12;
+        endif
+    else
+        if (sec >= 60)
+            min++;
+            sec -= 60;
+        endif
+        while (min >= 60)
+            hour++;
+            min -= 60;
+        wend
+        if (hour >= 24)
+            day++;
+            hour -= 24;
+        endif
+        if (day > DAYS_IN_MONTHS[month - 1])
+            day -= DAYS_IN_MONTHS[month - 1];
+            month++;
+        endif
+        if (month > 12)
+            year++;
+            month -=12;
+        endif
     endif
     //actually set time
+    //TODO: BST ADJUST
     sys_SetDate(year, month, day);
     sys_SetTime(hour, min, sec);
     print("TIME ",hour,":",min,":",sec,"\r\n");
+endfunc
+
+//  Function to set RTC RAM values for drift calculations
+//  First word  -  days since 2000
+//  Second word -  upper byte hours when set - lower byte minutes when set
+//  Third word  -  error in seconds drift per 100 days
+//  Fourth word -  number of corrections (used in weighting adjustments)
+func RTC_set_drift_parameters(var days_since_2000_set, var hour_set, var mins_set,
+                                                var drift_per_day_x100, var corrections)
+
+    RTC_RAM_writewords(0,1,&days_since_2000_set);
+    RTC_RAM_writebytes(2,1,&hour_set);
+    RTC_RAM_writebytes(3,1,&min_set);
+    RTC_RAM_writewords(4,3,&drift_per_day_x100);
+    RTC_RAM_writewords(6,1,&corrections);
+endfunc
+
+func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins_set, var sec_set)
+    var current_days_since_2000_set, current_hour_set, current_min_set, current_drift, corrections;
+    // Get current data
+    RTC_RAM_readwords(0, 1, &current_days_since_2000_set);
+    RTC_RAM_readbytes(2, 1, &current_hour_set);
+    RTC_RAM_readbytes(3, 1, &current_min_set);
+    RTC_RAM_readwords(4, 1, &current_drift);
+    RTC_RAM_readwords(6, 1, &corrections);
+    if (current_days_since_2000_set != -1 && current_hour_set != 255 && current_min_set != 255)
+        var rtc_year, rtc_month, rtc_day, rtc_hour, rtc_min, rtc_sec;
+        var drift_days[2], drift_secs[2], hour[2], min[2], temp[2];
+        var drift_whole_days, drift_int_temp, drift_hour, drift_min, drift;
+        RTC_GetDateVar(rtc_year, rtc_month, rtc_day);
+        RTC_GetTimeVar(rtc_hour, rtc_min, rtc_sec);
+        drift_whole_days := days_since_2000_set - current_days_since_2000_set;
+        flt_ITOF(drift_days, &drift_whole_days);
+        drift_hour := hour_set - current_hour_set;
+        drift_min := min_set - current_min_set;
+        drift_hour *= 60;
+        drift_hour += drift_min;
+        flt_ITOF(temp, &drift_hour);
+        flt_DIV(temp,temp,"1440");
+        flt_ADD(drift_days,drift_days,temp);
+
+        drift_int_temp := days_since_2000_set - date_to_days(rtc_year, rtc_month, rtc_day)
+        flt_ITOF(drift_secs, &drift_int_temp);
+        flt_MUL(drift_sec, drift_sec, "24");
+        drift_int_temp := hour_set - rtc_hour;
+        flt_ITOF(temp, &drift_int_temp);
+        flt_ADD(drift_sec,drift_sec,temp);
+        flt_MUL(drift_sec, drift_sec, "60");
+        drift_int_temp := min_set - rtc_min;
+        flt_ITOF(temp, &drift_int_temp);
+        flt_ADD(drift_sec,drift_sec,temp);
+        flt_MUL(drift_sec, drift_sec, "60");
+        drift_int_temp := sec_set - rtc_sec;
+        flt_ITOF(temp, &drift_int_temp);
+        flt_ADD(drift_sec,drift_sec,temp);
+
+        flt_DIV(drift_sec, drift_sec, drfit_days);
+        flt_MUL(drift_sec, drift_sec, "100");
+        drift := flt_FTOI(drift_sec);
+    else
+        drift := 0;
+    endif
+    RTC_set_drift_parameters(days_since_2000_set, hour_set, mins_set, drift, 0);
+endfunc
+
+//  Function to initialise drift parameters if unknown
+//  Parameters will develop through subsequent clock corrections
+func RTC_drift_parameter_initialise()
+    RTC_set_drift_parameters(-1,255,255,0,0)
 endfunc
 
 //RAM functions
