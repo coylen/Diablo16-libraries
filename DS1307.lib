@@ -10,7 +10,7 @@
 //  Second word -  upper byte hours when set - lower byte minutes when set
 //  Third word  -  error in seconds drift per 100 days
 //  Fourth word -  upper byte number of corrections (used in weighting adjustments)
-//				-  lower byte checksum TODO (choose checksum method)
+//                -  lower byte checksum TODO (choose checksum method)
 //  Due to the limitation of words the maximum error possible is +/-32768 seconds
 //  Based on typical drift for these chips this equates to over 10 years between sets
 //
@@ -343,83 +343,110 @@ func RTC_to_sys()
     var delta_sec, delta_min, delta_hr, delta_day, delta_month, delta_year;
     //TODO: encode and read into RAM
     //TODO: JUST STORE DAYS SINCE 2000
-    var base_year := 17;
+/*    var base_year := 17;
     var base_month := 9;
     var base_day := 5;
     var base_hr := 19;
     var base_min := 20;
     var base_sec := 25;
-    var seconds_per_day_x100 := -314;
+    var seconds_per_day_x100 := -314;   */
     RTC_GetDateVar(&year, &month, &day);
     RTC_GetTimeVar(&hour, &min, &sec);
 
     //calculate days since set
     var base_days, current_days, error_days;
     var error_seconds;
-    //TODO: REPLACE FROM RAM
-    base_days := date_to_days(base_year, base_month, base_day);
-    current_days := date_to_days(year, month, day);
-    error_days := current_days - base_days;
-    //first calculate for whole 100 day intervals
-    error_seconds := error_days / 100 * seconds_per_day_x100;
-    //Now round the remainder, elaborate method to prevent overrun
-    //and do floating point maths in integers
-    var sub_100_days_secs;
-    //remainder of 100 days
-    sub_100_days_secs := error_days % 100;
-    //times seconds per
-    sub_100_days_secs *= seconds_per_day_x100;
-    sub_100_days_secs /= 100;
-    error_seconds += sub_100_days_secs;
+// INSERT
+    var array[4];
+    RTC_RAM_readwords(0, 4, array);
+    //check checksum
+    if(check_checksum(array))
+    // LOAD DATA
+        base_days := array[0];
+        base_hr := HiByte(array[1]);
+        base_min := LoByte(array[1]);
+        seconds_per_day_x100 := array[2];
 
-    //Apply error seconds and watch for overrun
-    sec += error_seconds % 60;
-    min += error_seconds / 60;
-    if (error_seconds < 0)
-        if (sec < 0)
-            min--;
-            sec += 60;
+        current_days := date_to_days(year, month, day);
+        error_days := current_days - base_days;
+        //first calculate for whole 100 day intervals
+        error_seconds := error_days / 100 * seconds_per_day_x100;
+        //Now round the remainder, elaborate method to prevent overrun
+        //and do floating point maths in integers
+        var sub_100_days_secs;
+        //remainder of 100 days
+        sub_100_days_secs := error_days % 100;
+        //times seconds per
+        sub_100_days_secs *= seconds_per_day_x100;
+        sub_100_days_secs /= 100;
+        error_seconds += sub_100_days_secs;
+
+        //Apply error seconds and watch for overrun
+        sec += error_seconds % 60;
+        min += error_seconds / 60;
+        if (error_seconds < 0)
+            if (sec < 0)
+                min--;
+                sec += 60;
+            endif
+            while(min < 0)
+                hour--;
+                min += 60;
+            wend
+            if (hour < 0)
+                day--;
+                hour += 24;
+            endif
+            if (day < 1)
+                month--;
+                day += DAYS_IN_MONTHS[month - 1];
+            endif
+            if (month < 1)
+                year--;
+                month +=12;
+            endif
+        else
+            if (sec >= 60)
+                min++;
+                sec -= 60;
+            endif
+            while (min >= 60)
+                hour++;
+                min -= 60;
+            wend
+            if (hour >= 24)
+                day++;
+                hour -= 24;
+            endif
+            if (day > DAYS_IN_MONTHS[month - 1])
+                day -= DAYS_IN_MONTHS[month - 1];
+                month++;
+            endif
+            if (month > 12)
+                year++;
+                month -=12;
+            endif
         endif
-        while(min < 0)
-            hour--;
-            min += 60;
-        wend
-        if (hour < 0)
-            day--;
-            hour += 24;
-        endif
-        if (day < 1)
-            month--;
-            day += DAYS_IN_MONTHS[month - 1];
-        endif
-        if (month < 1)
-            year--;
-            month +=12;
-        endif
-    else
-        if (sec >= 60)
-            min++;
-            sec -= 60;
-        endif
-        while (min >= 60)
-            hour++;
-            min -= 60;
-        wend
-        if (hour >= 24)
-            day++;
-            hour -= 24;
-        endif
-        if (day > DAYS_IN_MONTHS[month - 1])
-            day -= DAYS_IN_MONTHS[month - 1];
-            month++;
-        endif
-        if (month > 12)
-            year++;
-            month -=12;
+    endif
+    //BST ADJUST
+    if (is_it_BST(year, month, day))
+        if(hour > 1)
+            hour -= 1;
+        else
+            hour = 23;
+            day -= 1;
+            if(day == 0)
+                if (month > 1)
+                    month -= 1;
+                else
+                    month := 12
+                    year -= 1;
+                endif
+                day := DAYS_IN_MONTHS[month - 1];
+            endif
         endif
     endif
     //actually set time
-    //TODO: BST ADJUST
     sys_SetDate(year, month, day);
     sys_SetTime(hour, min, sec);
     print("TIME ",hour,":",min,":",sec,"\r\n");
@@ -433,27 +460,65 @@ endfunc
 func RTC_set_drift_parameters(var days_since_2000_set, var hour_set, var mins_set,
                                                 var drift_per_day_x100, var corrections)
 
-    RTC_RAM_writewords(0,1,&days_since_2000_set);
-    RTC_RAM_writebytes(2,1,&hour_set);
-    RTC_RAM_writebytes(3,1,&min_set);
-    RTC_RAM_writewords(4,3,&drift_per_day_x100);
-    RTC_RAM_writewords(6,1,&corrections);
-	//TODO checksum
+    var temp1, temp2;
+    HiByte(temp1) := hour_set;
+    LoByte(temp1) := min_set;
+    HiByte(temp2) := corrections;
+    var array[4] := [ days_since_2000_set, temp1, drift_per_day_x100, temp2]
+    create_checksum(array)
+    RTC_RAM_writewords(0,4,array);
+//      RTC_RAM_writewords(0,1,&days_since_2000_set);
+//    RTC_RAM_writebytes(2,1,&hour_set);
+//    RTC_RAM_writebytes(3,1,&min_set);
+//    RTC_RAM_writewords(4,3,&drift_per_day_x100);
+//    RTC_RAM_writebytes(6,1,&corrections);
+    //TODO checksum
+endfunc
+
+//Create NMEA style XOR checksum for input values
+func create_checksum(var input)
+    var i, csum :=0;
+    for(i:=0; i < 3; i++)
+        csum ^= HiByte(input[i]);
+        csum ^= LoByte(input[i]);
+    next
+    csum ^= HiByte(input[3]);
+    LoByte(input[3]) := csum;
+endfunc
+
+func check_checksum(var input)
+    var csum := LoByte(input[3]);
+    create_checksum(input);
+    if(csum := LoByte(input[3]))
+        return TRUE;
+    else
+        LoByte(input[3]) := csum;
+        return FALSE;
+    endif
 endfunc
 
 func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins_set, var sec_set)
     var current_days_since_2000_set, current_hour_set, current_min_set, current_drift, corrections;
-    // Get current data
-    RTC_RAM_readwords(0, 1, &current_days_since_2000_set);
+    var rtc_year, rtc_month, rtc_day, rtc_hour, rtc_min, rtc_sec;
+    var drift_days[2], drift_secs[2], hour[2], min[2], temp[2];
+    var drift_whole_days, drift_int_temp, drift_hour, drift_min, drift;
+ // Get current data
+/*    RTC_RAM_readwords(0, 1, &current_days_since_2000_set);
     RTC_RAM_readbytes(2, 1, &current_hour_set);
     RTC_RAM_readbytes(3, 1, &current_min_set);
     RTC_RAM_readwords(4, 1, &current_drift);
-    RTC_RAM_readwords(6, 1, &corrections);
-	//TODO check checksum
-    if (current_days_since_2000_set != -1 && current_hour_set != 255 && current_min_set != 255)
-        var rtc_year, rtc_month, rtc_day, rtc_hour, rtc_min, rtc_sec;
-        var drift_days[2], drift_secs[2], hour[2], min[2], temp[2];
-        var drift_whole_days, drift_int_temp, drift_hour, drift_min, drift;
+    RTC_RAM_readwords(6, 1, &corrections);*/
+    var array[4];
+    RTC_RAM_readwords(0, 4, array);
+    //check checksum
+    if(check_checksum(array))
+    // LOAD DATA
+        current_days_since_2000_set := array[0];
+        current_hour_set := HiByte(array[1]);
+        current_min_set := LoByte(array[1]);
+        current_drift := array[2];
+        corrections := HiByte(array[3](;
+
         RTC_GetDateVar(rtc_year, rtc_month, rtc_day);
         RTC_GetTimeVar(rtc_hour, rtc_min, rtc_sec);
         drift_whole_days := days_since_2000_set - current_days_since_2000_set;
@@ -480,14 +545,18 @@ func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins
         drift_int_temp := sec_set - rtc_sec;
         flt_ITOF(temp, &drift_int_temp);
         flt_ADD(drift_sec,drift_sec,temp);
-
         flt_DIV(drift_sec, drift_sec, drfit_days);
         flt_MUL(drift_sec, drift_sec, "100");
         drift := flt_FTOI(drift_sec);
+        //adjust ratio with current drift and corrections
+        var weighted_drift;
+        weighted_drift := current_drift * corrections + drift;
+        drift := weighted_drift / (corrections +1)
     else
         drift := 0;
+        corrections :=0;
     endif
-    RTC_set_drift_parameters(days_since_2000_set, hour_set, mins_set, drift, 0);
+    RTC_set_drift_parameters(days_since_2000_set, hour_set, mins_set, drift, corrections);
 endfunc
 
 //  Function to initialise drift parameters if unknown
