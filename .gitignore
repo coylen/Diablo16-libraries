@@ -18,3 +18,9 @@ memtest\.4DWork/memtest\.err
 memtest\.4DWork/memtest\.lst
 
 memtest\.4XE
+
+battery\.lib
+
+*.zip
+
+battery\.inc

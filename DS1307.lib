@@ -32,7 +32,7 @@
 #constant REG_DS1307_CONTROL    7
 #constant REG_DS1307_RAM        8
 
-#constant FALSE, TRUE
+//#constant FALSE, TRUE
 #DATA
     byte DAYS_IN_MONTHS 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
     byte BST_START 29, 28, 27, 26, 25, 31, 30
@@ -83,17 +83,19 @@ endfunc
 //  Summer time runs from the last sunday in march
 //  to the last sunday in october
 func is_it_BST(var year, var month, var day)
+    var first_of_march;
     if (month > 3 && month < 10)
         return TRUE;
     endif
     if (month == 3)
-        var first_of_march := day_of_week(year, 3, 1);
+
+        first_of_march := day_of_week(year, 3, 1);
         if (day >= BST_START[first_of_march])
             return TRUE;
         endif
     endif
     if (month == 10)
-        var first_of_march := day_of_week(year, 3, 1);
+        first_of_march := day_of_week(year, 3, 1);
         if (day <= BST_END[first_of_march] )
             return TRUE;
         endif
@@ -319,13 +321,13 @@ func do_sys_to_RTC(var include_BST)
         if(hr > 1)
             hr -= 1;
         else
-            hr = 23;
+            hr := 23;
             day -= 1;
             if(day == 0)
                 if (month > 1)
                     month -= 1;
                 else
-                    month := 12
+                    month := 12;
                     year -= 1;
                 endif
                 day := DAYS_IN_MONTHS[month - 1];
@@ -333,7 +335,7 @@ func do_sys_to_RTC(var include_BST)
         endif
     endif
     //CALCULATE AND SET DRIFT PARAMETERS
-    RTC_adjust_drift_parameters(date_to_days(year, month, day), hr, min, sec)
+    RTC_adjust_drift_parameters(date_to_days(year, month, day), hr, min, sec);
     RTC_SetAllDate(year, month, day);
     RTC_SetTime(hr, min, sec);
 endfunc
@@ -362,9 +364,10 @@ func RTC_to_sys()
     //check checksum
     if(check_checksum(array))
     // LOAD DATA
+        var base_hr, base_min, seconds_per_day_x100;
         base_days := array[0];
-        base_hr := HiByte(array[1]);
-        base_min := LoByte(array[1]);
+        base_hr := HIbyte(array[1]);
+        base_min := LObyte(array[1]);
         seconds_per_day_x100 := array[2];
 
         current_days := date_to_days(year, month, day);
@@ -433,13 +436,13 @@ func RTC_to_sys()
         if(hour > 1)
             hour -= 1;
         else
-            hour = 23;
+            hour := 23;
             day -= 1;
             if(day == 0)
                 if (month > 1)
                     month -= 1;
                 else
-                    month := 12
+                    month := 12;
                     year -= 1;
                 endif
                 day := DAYS_IN_MONTHS[month - 1];
@@ -449,7 +452,7 @@ func RTC_to_sys()
     //actually set time
     sys_SetDate(year, month, day);
     sys_SetTime(hour, min, sec);
-    print("TIME ",hour,":",min,":",sec,"\r\n");
+    //print("TIME ",hour,":",min,":",sec,"\r\n");
 endfunc
 
 //  Function to set RTC RAM values for drift calculations
@@ -461,13 +464,23 @@ func RTC_set_drift_parameters(var days_since_2000_set, var hour_set, var mins_se
                                                 var drift_per_day_x100, var corrections)
 
     var temp1, temp2;
-    HiByte(temp1) := hour_set;
-    LoByte(temp1) := min_set;
-    HiByte(temp2) := corrections;
-    var array[4] := [ days_since_2000_set, temp1, drift_per_day_x100, temp2]
-    create_checksum(array)
-    RTC_RAM_writewords(0,4,array);
-//      RTC_RAM_writewords(0,1,&days_since_2000_set);
+    temp1 := hour_set;
+    temp1 := (temp1 << 8) +  (mins_set & 0x00FF);
+    temp2 := corrections << 8;
+
+    var array[4];
+    array[0] := days_since_2000_set;
+    array[1] := temp1;
+    array[2] := drift_per_day_x100;
+    array[3] := temp2;
+    print(array[0], " ", array[1]," ", array[2], " ", array[3]);
+
+    create_checksum(array);
+    print(array[0], " ", array[1]," ", array[2], " ", array[3]);
+    var bob;
+	bob := RTC_RAM_writewords(0,4,array);
+	print("VALID ",bob);
+	//      RTC_RAM_writewords(0,1,&days_since_2000_set);
 //    RTC_RAM_writebytes(2,1,&hour_set);
 //    RTC_RAM_writebytes(3,1,&min_set);
 //    RTC_RAM_writewords(4,3,&drift_per_day_x100);
@@ -479,20 +492,21 @@ endfunc
 func create_checksum(var input)
     var i, csum :=0;
     for(i:=0; i < 3; i++)
-        csum ^= HiByte(input[i]);
-        csum ^= LoByte(input[i]);
+        csum ^= HIbyte(input[i]);
+        csum ^= LObyte(input[i]);
     next
-    csum ^= HiByte(input[3]);
-    LoByte(input[3]) := csum;
+    csum ^= HIbyte(input[3]);
+    input[3] := (input[3] & 0xFF00) + (csum & 0x00FF);
 endfunc
 
 func check_checksum(var input)
-    var csum := LoByte(input[3]);
+    var csum;
+    csum := input[3];
     create_checksum(input);
-    if(csum := LoByte(input[3]))
+    if(csum == input[3])
         return TRUE;
     else
-        LoByte(input[3]) := csum;
+        input[3] := csum;
         return FALSE;
     endif
 endfunc
@@ -514,44 +528,44 @@ func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins
     if(check_checksum(array))
     // LOAD DATA
         current_days_since_2000_set := array[0];
-        current_hour_set := HiByte(array[1]);
-        current_min_set := LoByte(array[1]);
+        current_hour_set := HIbyte(array[1]);
+        current_min_set := LObyte(array[1]);
         current_drift := array[2];
-        corrections := HiByte(array[3](;
+        corrections := HIbyte(array[3]);
 
         RTC_GetDateVar(rtc_year, rtc_month, rtc_day);
         RTC_GetTimeVar(rtc_hour, rtc_min, rtc_sec);
         drift_whole_days := days_since_2000_set - current_days_since_2000_set;
         flt_ITOF(drift_days, &drift_whole_days);
         drift_hour := hour_set - current_hour_set;
-        drift_min := min_set - current_min_set;
+        drift_min := mins_set - current_min_set;
         drift_hour *= 60;
         drift_hour += drift_min;
         flt_ITOF(temp, &drift_hour);
         flt_DIV(temp,temp,"1440");
         flt_ADD(drift_days,drift_days,temp);
 
-        drift_int_temp := days_since_2000_set - date_to_days(rtc_year, rtc_month, rtc_day)
+        drift_int_temp := days_since_2000_set - date_to_days(rtc_year, rtc_month, rtc_day);
         flt_ITOF(drift_secs, &drift_int_temp);
-        flt_MUL(drift_sec, drift_sec, "24");
+        flt_MUL(drift_secs, drift_secs, "24");
         drift_int_temp := hour_set - rtc_hour;
         flt_ITOF(temp, &drift_int_temp);
-        flt_ADD(drift_sec,drift_sec,temp);
-        flt_MUL(drift_sec, drift_sec, "60");
-        drift_int_temp := min_set - rtc_min;
+        flt_ADD(drift_secs,drift_secs,temp);
+        flt_MUL(drift_secs, drift_secs, "60");
+        drift_int_temp := mins_set - rtc_min;
         flt_ITOF(temp, &drift_int_temp);
-        flt_ADD(drift_sec,drift_sec,temp);
-        flt_MUL(drift_sec, drift_sec, "60");
+        flt_ADD(drift_secs,drift_secs,temp);
+        flt_MUL(drift_secs, drift_secs, "60");
         drift_int_temp := sec_set - rtc_sec;
         flt_ITOF(temp, &drift_int_temp);
-        flt_ADD(drift_sec,drift_sec,temp);
-        flt_DIV(drift_sec, drift_sec, drfit_days);
-        flt_MUL(drift_sec, drift_sec, "100");
-        drift := flt_FTOI(drift_sec);
+        flt_ADD(drift_secs,drift_secs,temp);
+        flt_DIV(drift_secs, drift_secs, drift_days);
+        flt_MUL(drift_secs, drift_secs, "100");
+        drift := flt_FTOI(drift_secs);
         //adjust ratio with current drift and corrections
         var weighted_drift;
         weighted_drift := current_drift * corrections + drift;
-        drift := weighted_drift / (corrections +1)
+        drift := weighted_drift / (corrections +1);
     else
         drift := 0;
         corrections :=0;
