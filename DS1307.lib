@@ -40,7 +40,8 @@
 #END
 
 var DS1307_i2c := 1;
-#inherit "lib\\i2c.lib"
+// Directory to suit battery monitor structure
+#inherit "..\\lib\\i2c.lib"
 
 //  Helper functions to translate binary coded decimals into standard integers
 func bcd_to_int(var bcd)
