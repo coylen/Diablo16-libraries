@@ -40,7 +40,7 @@
 #END
 
 var DS1307_i2c := 1;
-#inherit "i2c.lib"
+#inherit "lib\\i2c.lib"
 
 //  Helper functions to translate binary coded decimals into standard integers
 func bcd_to_int(var bcd)
