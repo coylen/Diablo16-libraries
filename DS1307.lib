@@ -71,6 +71,7 @@ endfunc
 func date_to_days(var year, var month, var day)
     var days, i;
     days := day;
+	year %= 100;
     for(i := 0; i < month - 1; i++)
         days += DAYS_IN_MONTHS[i];
     next
@@ -250,7 +251,6 @@ endfunc
 func RTC_SetYear(var year)
     var ack, year_bcd;
     year_bcd := int_to_bcd(year % 100); //needed to convert from 4 digit date notation to 2 digit as used in DS1307
-    print(year_bcd) ;
     ack := I2C_writebytes_mem(DS1307_i2c, DS1307_Address, REG_DS1307_YEAR, 1, &year_bcd);
     return ack;
 endfunc
@@ -345,10 +345,10 @@ func do_sys_to_RTC(var include_BST)
         endif
     endif
     //CALCULATE AND SET DRIFT PARAMETERS
-    RTC_adjust_drift_parameters(date_to_days(year, month, day), hr, min, sec);
-//TODO: REVERT HACK PUT IN FOR TESTING ONLY	
-//    RTC_SetAllDate(year, month, day);
-//    RTC_SetTime(hr, min, sec);
+	RTC_adjust_drift_parameters(date_to_days(year , month, day), hr, min, sec);
+
+    RTC_SetAllDate(year, month, day);
+    RTC_SetTime(hr, min, sec);
 endfunc
 
 func RTC_to_sys()
@@ -463,13 +463,13 @@ func RTC_to_sys()
     //actually set time
     sys_SetDate(year, month, day);
     sys_SetTime(hour, min, sec);
-    //print("TIME ",hour,":",min,":",sec,"\r\n");
+
 	
 	#IF (_DEBUG_ENABLED == 1)
-	to(DS1307DEBUGText); print("TIME SET ", hour,":",min,":",sec," ",day,"?",month,"/",year, "\n");
-	to(DS1307DEBUGText); print("Adjustment :", error_seconds, "using factor ", seconds_per_day_x100, "\n");
+	to(DS1307DEBUGText); print("TIME SET ", hour,":",min,":",sec," ",day,"/",month,"/",year, "\n");
+	to(APPEND); print("Adjustment :", error_seconds, "using factor ", seconds_per_day_x100, "\n");
     if (is_it_BST(year, month, day)) 
-		to(DS1307DEBUGText); print("BST ADJUSTMENT APPLIED\n");
+		to(APPEND); print("BST ADJUSTMENT APPLIED\n");
 	endif
 	#ENDIF
 endfunc
@@ -492,19 +492,10 @@ func RTC_set_drift_parameters(var days_since_2000_set, var hour_set, var mins_se
     array[1] := temp1;
     array[2] := drift_per_day_x100;
     array[3] := temp2;
-    print(array[0], " ", array[1]," ", array[2], " ", array[3]);
-
     create_checksum(array);
-    print(array[0], " ", array[1]," ", array[2], " ", array[3]);
     var bob;
 	bob := RTC_RAM_writewords(0,4,array);
-	print("VALID ",bob);
-	//      RTC_RAM_writewords(0,1,&days_since_2000_set);
-//    RTC_RAM_writebytes(2,1,&hour_set);
-//    RTC_RAM_writebytes(3,1,&min_set);
-//    RTC_RAM_writewords(4,3,&drift_per_day_x100);
-//    RTC_RAM_writebytes(6,1,&corrections);
-    //TODO checksum
+
 endfunc
 
 //Create NMEA style XOR checksum for input values
@@ -533,16 +524,11 @@ endfunc
 func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins_set, var sec_set)
     var current_days_since_2000_set, current_hour_set, current_min_set, current_drift, corrections;
     var rtc_year, rtc_month, rtc_day, rtc_hour, rtc_min, rtc_sec;
-    var drift_days[2], drift_secs[2], hour[2], min[2], temp[2];
+    var drift_days[2], drift_secs[2], temp[2];
     var drift_whole_days, drift_int_temp, drift_hour, drift_min, drift;
- // Get current data
-/*    RTC_RAM_readwords(0, 1, &current_days_since_2000_set);
-    RTC_RAM_readbytes(2, 1, &current_hour_set);
-    RTC_RAM_readbytes(3, 1, &current_min_set);
-    RTC_RAM_readwords(4, 1, &current_drift);
-    RTC_RAM_readwords(6, 1, &corrections);*/
+    // Get current data
     var array[4];
-    RTC_RAM_readwords(0, 4, array);
+	RTC_RAM_readwords(0, 4, array);
     //check checksum
     if(check_checksum(array))
     // LOAD DATA
@@ -551,32 +537,30 @@ func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins
         current_min_set := LObyte(array[1]);
         current_drift := array[2];
         corrections := HIbyte(array[3]);
-
-        RTC_GetDateVar(rtc_year, rtc_month, rtc_day);
-        RTC_GetTimeVar(rtc_hour, rtc_min, rtc_sec);
-        drift_whole_days := days_since_2000_set - current_days_since_2000_set;
-        flt_ITOF(drift_days, &drift_whole_days);
+        RTC_GetDateVar(&rtc_year, &rtc_month, &rtc_day);
+        RTC_GetTimeVar(&rtc_hour, &rtc_min, &rtc_sec);
+		        drift_whole_days := days_since_2000_set - current_days_since_2000_set;
+        flt_ITOF(drift_days, drift_whole_days);
         drift_hour := hour_set - current_hour_set;
         drift_min := mins_set - current_min_set;
         drift_hour *= 60;
         drift_hour += drift_min;
-        flt_ITOF(temp, &drift_hour);
+        flt_ITOF(temp, drift_hour);
         flt_DIV(temp,temp,"1440");
         flt_ADD(drift_days,drift_days,temp);
-
-        drift_int_temp := days_since_2000_set - date_to_days(rtc_year, rtc_month, rtc_day);
-        flt_ITOF(drift_secs, &drift_int_temp);
+		drift_int_temp := days_since_2000_set - date_to_days(rtc_year, rtc_month, rtc_day);
+		flt_ITOF(drift_secs, drift_int_temp);
         flt_MUL(drift_secs, drift_secs, "24");
         drift_int_temp := hour_set - rtc_hour;
-        flt_ITOF(temp, &drift_int_temp);
+        flt_ITOF(temp, drift_int_temp);
         flt_ADD(drift_secs,drift_secs,temp);
         flt_MUL(drift_secs, drift_secs, "60");
         drift_int_temp := mins_set - rtc_min;
-        flt_ITOF(temp, &drift_int_temp);
+        flt_ITOF(temp, drift_int_temp);
         flt_ADD(drift_secs,drift_secs,temp);
         flt_MUL(drift_secs, drift_secs, "60");
         drift_int_temp := sec_set - rtc_sec;
-        flt_ITOF(temp, &drift_int_temp);
+        flt_ITOF(temp, drift_int_temp);
         flt_ADD(drift_secs,drift_secs,temp);
         flt_DIV(drift_secs, drift_secs, drift_days);
         flt_MUL(drift_secs, drift_secs, "100");
@@ -585,15 +569,15 @@ func RTC_adjust_drift_parameters(var days_since_2000_set, var hour_set, var mins
         var weighted_drift;
         weighted_drift := current_drift * corrections + drift;
         drift := weighted_drift / (corrections +1);
-    else
+	else
         drift := 0;
         corrections :=0;
     endif
- //TODO: TEMPORY HACK FOR TESTING
  	#IF (_DEBUG_ENABLED == 1)
-	to(DS1307DEBUGText); print("Current Drift:", current_drift, " new drift: ",drift,"\n");
+	to(DS1307DEBUGText); print("TIME SET ", hour_set,":",mins_set,":",sec_set, "\n");
+	to(APPEND); print("New Drift:", drift, " old factor: ",current_drift,"\n");
 	#ENDIF
-//   RTC_set_drift_parameters(days_since_2000_set, hour_set, mins_set, drift, corrections);
+    RTC_set_drift_parameters(days_since_2000_set, hour_set, mins_set, drift, corrections);
 endfunc
 
 //  Function to initialise drift parameters if unknown
