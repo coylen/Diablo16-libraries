@@ -256,14 +256,14 @@ func RTC_SetYear(var year)
 endfunc
 
 //  FUNCTION TO GET TIME OFF I2C_RTC
-func RTC_GetTimeVar(var hour, var minute, var second)
+func RTC_GetTimeVar(var *ptr_hour, var *ptr_minute, var *ptr_second)
     *hour := RTC_GetHours();
     *minute := RTC_GetMinutes();
     *second := RTC_GetSeconds();
 endfunc
 
 //  FUNCTION TO GET DATE OFF I2C_RTC
-func RTC_GetDateVar(var year, var month, var day)
+func RTC_GetDateVar(var *ptr_year, var *ptr_month, var *ptr_day)
     *year := RTC_GetYear();
     *month := RTC_GetMonth();
     *day := RTC_GetDate();
@@ -587,27 +587,27 @@ func RTC_drift_parameter_initialise()
 endfunc
 
 //RAM functions
-func RTC_RAM_WriteBytes(var offset, var nbytes, var buf)
+func RTC_RAM_WriteBytes(var offset, var nbytes, var *ptr_buf)
     var ack;
-    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, buf);
+    ack := I2C_WriteBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, ptr_buf);
     return ack;
 endfunc
 
-func RTC_RAM_WriteWords(var offset, var nwords, var buf)
+func RTC_RAM_WriteWords(var offset, var nwords, var *ptr_buf)
     var ack;
-    ack := I2C_WriteWordsMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, buf);
+    ack := I2C_WriteWordsMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, ptr_buf);
     return ack;
 endfunc
 
-func RTC_RAM_ReadBytes(var offset, var nbytes, var buf)
+func RTC_RAM_ReadBytes(var offset, var nbytes, var *ptr_buf)
     var ack;
-    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, buf);
+    ack := I2C_ReadBytesMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nbytes, ptr_buf);
     return ack;
 endfunc
 
-func RTC_RAM_ReadWords(var offset, var nwords, var buf)
+func RTC_RAM_ReadWords(var offset, var nwords, var *ptr_buf)
     var ack;
-    ack := I2C_ReadWordsMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, buf);
+    ack := I2C_ReadWordsMem(DS1307_i2c, DS1307_Address, REG_DS1307_RAM + offset, nwords, ptr_buf);
     return ack;
 endfunc
 

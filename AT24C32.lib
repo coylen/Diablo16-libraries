@@ -13,23 +13,23 @@ var newbob[100];
 var pointy;
 //AT24C32 functions
 //TODO: WRITE BYTES TO BE UPDATED
-func AT24C32_WriteBytes(var offset, var nbytes, var buf)
+func AT24C32_WriteBytes(var offset, var nbytes, var *ptr_buf)
     var ack,endp;
     endp := AT24C32_CheckWriteOffset(offset, nbytes);
     if(endp == -1)
         return -1;
     endif
     if(endp == 0)
-        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, buf);
+        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, ptr_buf);
         return ack;
     else
-        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes-endp, buf);
-        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset+nbytes-endp, endp, &buf[nbytes-endp]);
+        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes-endp, ptr_buf);
+        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset+nbytes-endp, endp, &ptr_buf[nbytes-endp]);
         return ack;
     endif
 endfunc
 
-func AT24C32_WriteWords(var offset, var nwords, var buf)
+func AT24C32_WriteWords(var offset, var nwords, var *ptr_buf)
     var ack, endp, position, bytes_on_page, pages, overrun;
     endp := AT24C32_CheckWriteOffset(offset, nwords * 2);
     if(endp == 0)
@@ -45,7 +45,7 @@ func AT24C32_WriteWords(var offset, var nwords, var buf)
 	position := bytes_on_page / 2;
 	print("BYTES : ",bytes_on_page," pages :", pages,"/n");
 	wait_on_I2C();
-	ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset, bytes_on_page, buf);
+	ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset, bytes_on_page, ptr_buf);
 	offset += bytes_on_page;
 	if(pages > 0)
 		for(endp := 0; endp < pages; endp++)
@@ -53,36 +53,36 @@ func AT24C32_WriteWords(var offset, var nwords, var buf)
 				offset := 0;
 			endif
 			wait_on_I2C();
-			ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset , 16, &buf[position]);
+			ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset , 16, &ptr_buf[position]);
 			position += 16;
 			offset += 32;
 		next
 	endif
 	if (position < nwords)
 			wait_on_I2C();
-			ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset , nwords - position, &buf[position]);
+			ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset , nwords - position, &ptr_buf[position]);
 	endif
 	return ack;
 			
 endfunc
 
-func AT24C32_ReadBytes(var offset, var nbytes, var buf)
+func AT24C32_ReadBytes(var offset, var nbytes, var *ptr_buf)
     if (AT24C32_CheckReadOffset(offset, nbytes) == -1)
         return -1;
     endif
     var ack;
-    ack := I2C_ReadBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, buf);
+    ack := I2C_ReadBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, ptr_buf);
     return ack;
 endfunc
 
-func AT24C32_ReadWords(var offset, var nwords, var buf)
+func AT24C32_ReadWords(var offset, var nwords, var *ptr_buf)
     if (AT24C32_CheckReadOffset(offset, nwords * 2) == -1)
         return -1;
     endif
 	var ack;
 	wait_on_I2C();
 	print("off ",offset,"  n ", nwords, "  \n");
-    ack := I2C_ReadWordsMem16(AT24C32_i2c, AT24C32_Address, offset, nwords, buf);
+    ack := I2C_ReadWordsMem16(AT24C32_i2c, AT24C32_Address, offset, nwords, ptr_buf);
     print("HUNG? ",ack);
 	return ack;
 endfunc
