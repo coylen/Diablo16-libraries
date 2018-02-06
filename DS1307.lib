@@ -257,16 +257,16 @@ endfunc
 
 //  FUNCTION TO GET TIME OFF I2C_RTC
 func RTC_GetTimeVar(var *ptr_hour, var *ptr_minute, var *ptr_second)
-    *hour := RTC_GetHours();
-    *minute := RTC_GetMinutes();
-    *second := RTC_GetSeconds();
+    *ptr_hour := RTC_GetHours();
+    *ptr_minute := RTC_GetMinutes();
+    *ptr_second := RTC_GetSeconds();
 endfunc
 
 //  FUNCTION TO GET DATE OFF I2C_RTC
 func RTC_GetDateVar(var *ptr_year, var *ptr_month, var *ptr_day)
-    *year := RTC_GetYear();
-    *month := RTC_GetMonth();
-    *day := RTC_GetDate();
+    *ptr_year := RTC_GetYear();
+    *ptr_month := RTC_GetMonth();
+    *ptr_day := RTC_GetDate();
 endfunc
 
 //  FUNCTIONS TO SET RTC DATE AND TIME
