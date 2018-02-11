@@ -238,30 +238,30 @@ func I2C1_WriteWordsMem(var addr, var memaddr, var nwords, var *ptr_ptr_buf)
     return (TRUE);
 endfunc
 
-//HACK to see where failing
+
 func I2C1_ReadBytesMem16(var addr, var memaddr, var nbytes, var *ptr_ptr_buf)
     var i, ack;
     I2C1_Start();
     ack := I2C1_Write(addr<<1);
     if (ack !=TRUE)
         I2C1_Stop();
-        return 0;// (FALSE);
+        return (FALSE);
     endif
     ack := I2C1_Write(HIbyte(memaddr));
     if (ack !=TRUE)
         I2C1_Stop();
-        return 1;//(FALSE);
+        return (FALSE);
     endif
     ack := I2C1_Write(LObyte(memaddr));
     if (ack !=TRUE)
         I2C1_Stop();
-        return 2;//(FALSE);
+        return (FALSE);
     endif
     I2C1_Restart();
     ack := I2C1_Write(addr<<1 | 1);
     if (ack !=TRUE)
         I2C1_Stop();
-        return 3;//(FALSE);
+        return (FALSE);
     endif
     for(i := 0; i < nbytes; i++)
         ptr_ptr_buf[i] := I2C1_Read();
@@ -271,7 +271,7 @@ func I2C1_ReadBytesMem16(var addr, var memaddr, var nbytes, var *ptr_ptr_buf)
     next
     I2C1_Nack();
     I2C1_Stop();
-    return 4;//TRUE;
+    return TRUE;
 endfunc
 
 func I2C1_WriteBytesMem16(var addr, var memaddr, var nbytes, var *ptr_ptr_buf)
@@ -335,18 +335,17 @@ func I2C1_ReadWordsMem16(var addr, var memaddr, var nwords, var *ptr_ptr_buf)
             if (i != nwords -1)
                 I2C1_Ack();
             endif
-		print("word : ",i," is ",ptr_ptr_buf[i],"\n");
+
 	next
     I2C1_Nack();
     I2C1_Stop();
-    return 1;//TRUE;
+    return TRUE;
 endfunc
 
 func I2C1_WriteWordsMem16(var addr, var memaddr, var nwords, var *ptr_ptr_buf)
     var i, ack, status;
     I2C1_Start();
     ack := I2C1_Write( addr << 1);
-	print("ACK: ",ack, "\n");
     if (ack !=TRUE)
         I2C1_Stop();
         return (FALSE);
@@ -372,7 +371,6 @@ func I2C1_WriteWordsMem16(var addr, var memaddr, var nwords, var *ptr_ptr_buf)
                 I2C1_Stop();
                 return FALSE;
             endif
-		print("word : ",i," is ",ptr_ptr_buf[i],"\n");
         next
     I2C1_Stop();
     return (TRUE);

@@ -40,12 +40,11 @@ func AT24C32_WriteWords(var offset, var nwords, var *ptr_buf)
 		endp *= -1;
 	endif
 
-	bytes_on_page := LObyte(endp);
+	bytes_on_page := MIN(LObyte(endp), nwords * 2);
 	pages := HIbyte(endp);
 	position := bytes_on_page / 2;
-	print("BYTES : ",bytes_on_page," pages :", pages,"/n");
 	wait_on_I2C();
-	ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset, bytes_on_page, ptr_buf);
+	ack := I2C_WriteWordsMem16(AT24C32_i2c, AT24C32_Address, offset, position, ptr_buf);
 	offset += bytes_on_page;
 	if(pages > 0)
 		for(endp := 0; endp < pages; endp++)
@@ -81,9 +80,7 @@ func AT24C32_ReadWords(var offset, var nwords, var *ptr_buf)
     endif
 	var ack;
 	wait_on_I2C();
-	print("off ",offset,"  n ", nwords, "  \n");
     ack := I2C_ReadWordsMem16(AT24C32_i2c, AT24C32_Address, offset, nwords, ptr_buf);
-    print("HUNG? ",ack);
 	return ack;
 endfunc
 
@@ -120,9 +117,7 @@ func AT24C32_CheckReadOffset(var offset, var nbytes)
 endfunc
 
 func wait_on_I2C()
-//	var t;
 	repeat
-//	t++;
 	until(I2C_IsReady(AT24C32_i2c, AT24C32_Address));
 endfunc
 
@@ -130,24 +125,15 @@ endfunc
 func AT24test()
 var qw;
     ActivateForm(5);
-//	I2C_scan(1, newbob);
-//	print(newbob[0],"  ",newbob[1],"  ",newbob[2]);
-to (qwebob1);print("This is a test of the memory storage module");//,\nit is a very impressive module and must be reverred.\nI hope that a module this good can be seen forever and ever.");
-print("\n\n\n\n\n");
-print(qwebob1[0]);
-pointy := str_Ptr(qwebob1);
-putstr(pointy);
-print("TEST");
 
-//print(newbob[0],"  ",newbob[1],"  ",newbob[2]);
-//qw := AT24C32_WriteWords(5, 10,bob1);//81
-//print("written ", qw," \n");
-//print("HI :", HIbyte(10), " LO: ", LObyte(10),"/n");
-//qw := 
-//AT24C32_ReadWords(5, 10, newbob);
-//print("READ ",qw," \n");
-//pointy:= str_Ptr(newbob);
-//print(pointy);
+to (qwebob1);print("This is a test of the memory storage module\nit is a very impressive module and must be reverred.\nI hope that a module this good can be seen forever and ever.");
 
+qw := AT24C32_WriteWords(20, 85,qwebob1);//81
+qw := AT24C32_ReadWords(20, 85, newbob);
+//pointy:= str_Ptr(qwebob1);
+//str_Printf(&pointy,"%s");
+print("\n");
+pointy:= str_Ptr(newbob);
+str_Printf(&pointy,"%s");
 endfunc
 
