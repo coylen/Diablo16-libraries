@@ -8,25 +8,43 @@
 
 #constant AT24C32_Address        0x50
 var AT24C32_i2c := 1;
-var qwebob1[50];
-var newbob[100];
-var pointy;
+
 //AT24C32 functions
 //TODO: WRITE BYTES TO BE UPDATED
 func AT24C32_WriteBytes(var offset, var nbytes, var *ptr_buf)
-    var ack,endp;
+    var ack,endp, position, bytes_on_page, pages, overrun;
     endp := AT24C32_CheckWriteOffset(offset, nbytes);
-    if(endp == -1)
+    if(endp == 0)
         return -1;
     endif
-    if(endp == 0)
-        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes, ptr_buf);
-        return ack;
-    else
-        ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, nbytes-endp, ptr_buf);
-        ack := I2C_writebytes_mem16(AT24C32_i2c, AT24C32_Address, offset+nbytes-endp, endp, &ptr_buf[nbytes-endp]);
-        return ack;
-    endif
+		if(endp < 0)
+		overrun := 1;
+		endp *= -1;
+	endif
+	
+	bytes_on_page := MIN(LObyte(endp), nbytes);
+	pages := HIbyte(endp);
+	position := bytes_on_page;
+	wait_on_I2C();
+	ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset, position, ptr_buf);
+	offset += bytes_on_page;
+	if(pages > 0)
+		for(endp := 0; endp < pages; endp++)
+			if (offset > 0xFFF)
+				offset := 0;
+			endif
+			wait_on_I2C();
+			ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset , 32, &ptr_buf[position]);
+			position += 32;
+			offset += 32;
+		next
+	endif
+	if (position < nwords)
+			wait_on_I2C();
+			ack := I2C_WriteBytesMem16(AT24C32_i2c, AT24C32_Address, offset , nbytes - position, &ptr_buf[position]);
+	endif
+	return ack;	
+	
 endfunc
 
 func AT24C32_WriteWords(var offset, var nwords, var *ptr_buf)
@@ -122,18 +140,4 @@ func wait_on_I2C()
 endfunc
 
 
-func AT24test()
-var qw;
-    ActivateForm(5);
-
-to (qwebob1);print("This is a test of the memory storage module\nit is a very impressive module and must be reverred.\nI hope that a module this good can be seen forever and ever.");
-
-qw := AT24C32_WriteWords(20, 85,qwebob1);//81
-qw := AT24C32_ReadWords(20, 85, newbob);
-//pointy:= str_Ptr(qwebob1);
-//str_Printf(&pointy,"%s");
-print("\n");
-pointy:= str_Ptr(newbob);
-str_Printf(&pointy,"%s");
-endfunc
 
