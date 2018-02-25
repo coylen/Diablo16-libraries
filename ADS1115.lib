@@ -69,13 +69,23 @@
 #constant _CQUE_4CONV           0x0002
 #constant _CQUE_NONE            0x0003
 
-#include "i2c.lib"
+#include "..\\libs\\i2c.lib"
 
 var _DR[8] := [8, 16, 32, 64, 128, 250, 475, 860]
 var _PGA[6] := [6144, 4096, 2048, 1024, 512, 256]
 var _DR_INDEX, _PGA_INDEX
 var ADS1115_i2c := 1;
 var ADS1115_Address := 0x48;
+
+#IF (_DEBUG_ENABLED == 1)
+var ADS1115DEBUGText[50];
+
+func ADS1115DEBUGProvider()
+	var pg;
+    pg := str_Ptr(ADS1115DEBUGText);
+    return pg;
+endfunc
+#ENDIF
 
 func ADS1115_ReadADC(var conf)
     var config, result;
@@ -87,7 +97,7 @@ func ADS1115_ReadADC(var conf)
     conf_bytes[1] := LObyte(config);
     I2C_WriteWordsMem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONFIG, 1, config);
     pause(1000 / _DR[DR_INDEX]  +1);
-    I2C_ReadWordsMem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result)
+    I2C_ReadWordsMem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result);
     return result;
 endfunc
 
@@ -101,7 +111,7 @@ func ADS1115_StartContinuousConversion(var conf)
     conf_bytes[1] := LObyte(config);
     I2C_WriteWordsMem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONFIG, 1, config);
     pause(1000 / _DR[DR_INDEX] +1);
-    I2C_ReadWordsMem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result)
+    I2C_ReadWordsMem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result);
     return result;
 endfunc
 
@@ -116,8 +126,8 @@ func ADS1115_StopContinuousConversion()
 endfunc
 
 func ADS1115_GetLastConversionResults()
-    var result
-    I2C_ReadWordsMem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result)
+    var result;
+    I2C_ReadWordsMem(ADS1115_i2c, ADS1115_Address, _REGISTER_CONVERT, 1, &result);
     return result;
 endfunc
 
@@ -134,7 +144,7 @@ func ADS1115_NewConfig()
  endfunc
 
  func ADS1115_SelectSingleChannel(var config, var channel)
-    var conf, mask = 0xFFFF - _MUX_MASK;
+    var conf, mask := 0xFFFF - _MUX_MASK;
     conf := config & mask;
     switch (channel)
         case 0:
@@ -151,7 +161,7 @@ func ADS1115_NewConfig()
  endfunc
 
 func ADS1115_SelectDiffChannel(var config, var ch1, var ch2)
-    var conf, mask = 0xFFFF - _MUX_MASK;
+    var conf, mask := 0xFFFF - _MUX_MASK;
     conf := config & mask;
     switch (ch1)
         case 0:
@@ -176,7 +186,7 @@ func ADS1115_SelectDiffChannel(var config, var ch1, var ch2)
 endfunc
 
 func ADS1115_SelectSPS(var config, var SPS)
-    var conf, mask = 0xFFFF - _DR_MASK;
+    var conf, mask := 0xFFFF - _DR_MASK;
     conf := config & mask;
     switch (SPS)
         case 8:
@@ -209,7 +219,7 @@ func ADS1115_SelectSPS(var config, var SPS)
  endfunc
 
 func ADS1115_SelectPGA(var config, var PGA)
-    var conf, mask = 0xFFFF - _PGA_MASK;
+    var conf, mask := 0xFFFF - _PGA_MASK;
     conf := config & mask;
     switch (PGA)
         case 256:
@@ -252,12 +262,12 @@ func ADS1115_SelectSPSINDEX(var config, var index)
     endif
 endfunc
 
-func ADS1115_CalcVoltage(var result, var voltage)
+func ADS1115_CalcVoltage(var result, var *ptr_voltage)
     var cal[2], tmp[2];
     flt_ITOF(cal, result);
     flt_ITOF(tmp, _PGA[_PGA_INDEX]);
     flt_DIV(tmp, tmp, "32768000.0");
-    flt_MUL(voltage, cal, tmp);
+    flt_MUL(ptr_voltage, cal, tmp);
 endfunc
 
 
